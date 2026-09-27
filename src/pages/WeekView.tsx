@@ -1,49 +1,44 @@
 import { useState } from "react";
 import type { Log, MealType } from "@/api/types";
-import { useActiveGoal, useLogsRange } from "@/api/hooks";
-import { addDays, isoWeekNumber, startOfWeek, toIsoDate, weekDates } from "@/lib/dates";
-import { groupByDateAndMeal, sumTotals } from "@/lib/macros";
+import { useCreateGroceryEntry, useDeleteLog, useGoalsList, useLogsRange } from "@/api/hooks";
+import { addDays, formatWeekRangeLabel, isoWeekNumber, startOfWeek, weekDates } from "@/lib/dates";
+import { resolveGoalForDate, sumGoalTargetsForWeek } from "@/lib/goals";
+import { groupByDateAndMeal, logDisplayName, sumTotals } from "@/lib/macros";
 import { DayColumn } from "@/components/DayColumn";
 import { WeekMacroSummary } from "@/components/WeekMacroSummary";
 import { MealDetailPanel } from "@/components/MealDetailPanel";
 import { ItemDetailModal } from "@/components/ItemDetailModal";
+import { QuantityEditDialog } from "@/components/QuantityEditDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { WeekPickerDialog } from "@/components/WeekPickerDialog";
+import { AddItemDialog } from "@/components/AddItemDialog";
 
 export function WeekView() {
-  // Defaults to the REAL current date every time this component
-  // mounts fresh (no persistence, e.g. no localStorage of the last-
-  // viewed week) - so opening the site always lands on the actual
-  // current week and today's date, never wherever you last
-  // pre-tracked ahead to (see design discussion: "when first entering
-  // the site, we should automatically select the current week and
-  // today's date, not the furthest tracked week because we
-  // pre-track"). Nothing else in this app writes to anchorDate except
-  // the nav buttons below, so this stays true for the life of the tab.
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const dates = weekDates(anchorDate);
   const startDate = dates[0];
   const endDate = dates[6];
 
-  // Which meal's detail panel (if any) is open - null means closed.
   const [selectedMeal, setSelectedMeal] = useState<{ date: string; mealType: MealType } | null>(null);
-  // Which log's detail/edit modal (if any) is open - reachable from
-  // BOTH the week grid directly and from inside the meal detail panel
-  // (see ItemDetailModal's own doc comment), so this lives up here
-  // rather than inside either of those, and can be open on top of
-  // MealDetailPanel.
-  const [selectedLog, setSelectedLog] = useState<Log | null>(null);
+  const [viewingLog, setViewingLog] = useState<Log | null>(null);
+  const [quantityLog, setQuantityLog] = useState<Log | null>(null);
+  const [deletingLog, setDeletingLog] = useState<Log | null>(null);
+  const [addingTo, setAddingTo] = useState<{ date: string; mealType: MealType } | null>(null);
+  const [showWeekPicker, setShowWeekPicker] = useState(false);
 
   const logsQuery = useLogsRange(startDate, endDate);
-  const goalQuery = useActiveGoal();
+  // Full history, not just "the active one" - a week can span more
+  // than one goal now that goals have date ranges (see design
+  // discussion). Each day resolves its OWN applicable goal below,
+  // rather than the whole week assuming a single shared one.
+  const goalsQuery = useGoalsList();
+  const deleteLog = useDeleteLog();
+  const createGroceryEntry = useCreateGroceryEntry();
 
-  const todayIso = toIsoDate(new Date());
-  // Only clamps to "days elapsed so far" when today actually falls
-  // WITHIN the displayed week - comparing a partially-elapsed week's
-  // totals against a partial budget makes sense there. A week entirely
-  // in the past (already fully happened) or entirely in the future
-  // (e.g. pre-tracked ahead of time - see design discussion) should
-  // both compare against the FULL week's budget instead.
-  const isCurrentWeek = todayIso >= startDate && todayIso <= endDate;
-  const daysInWeekSoFar = isCurrentWeek ? dates.filter((d) => d <= todayIso).length : 7;
+  function handleAddToGroceryList(log: Log) {
+    if (log.item_id == null) return;
+    createGroceryEntry.mutate(log.item_id);
+  }
 
   function goToPreviousWeek() {
     setAnchorDate((prev) => addDays(startOfWeek(prev), -1));
@@ -51,75 +46,82 @@ export function WeekView() {
   function goToNextWeek() {
     setAnchorDate((prev) => addDays(startOfWeek(prev), 7));
   }
-  function goToToday() {
-    setAnchorDate(new Date());
-  }
 
-  if (logsQuery.isLoading || goalQuery.isLoading) {
-    return <div className="p-8 text-center text-gray-400">Loading...</div>;
+  if (logsQuery.isLoading || goalsQuery.isLoading) {
+    return <div className="p-8 text-center text-gray-400 dark:text-gray-500">Loading...</div>;
   }
   if (logsQuery.isError) {
     return <div className="p-8 text-center text-red-500">Couldn't load logs: {(logsQuery.error as Error).message}</div>;
   }
 
   const logs = logsQuery.data ?? [];
+  const goals = goalsQuery.data ?? [];
   const grouped = groupByDateAndMeal(logs, dates);
   const weekTotals = sumTotals(logs);
   const weekNumber = isoWeekNumber(startOfWeek(anchorDate));
 
-  // Keeps selectedLog in sync with the latest fetched data (e.g. right
-  // after editing its quantity, the modal should show the NEW value,
-  // not the stale object it was opened with) - looked up by id from
-  // whatever's currently in the query cache rather than trusted as a
-  // frozen snapshot.
-  const liveSelectedLog = selectedLog ? logs.find((l) => l.id === selectedLog.id) ?? null : null;
+  // The full week's target, summing each day's own applicable goal -
+  // NOT one goal's daily target times a day count. That old model
+  // broke in two ways at once: it assumed a single goal for the whole
+  // week (wrong once goals can start mid-week), and it truncated to
+  // "days so far" (wrong for this app's actual pre-tracking use case,
+  // where weekTotals above already reflects the WHOLE week's logged
+  // data regardless of what day today is - comparing that against a
+  // partial-week target is what produced the "1800 target, 6573
+  // actual" bug).
+  const targetTotals = sumGoalTargetsForWeek(goals, dates);
+
+  const liveViewingLog = viewingLog ? logs.find((l) => l.id === viewingLog.id) ?? null : null;
+  const liveQuantityLog = quantityLog ? logs.find((l) => l.id === quantityLog.id) ?? null : null;
+  const selectedMealGoal = selectedMeal ? resolveGoalForDate(goals, selectedMeal.date) : undefined;
 
   return (
-    <div className="max-w-[1600px] mx-auto p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <button onClick={goToPreviousWeek} className="px-3 py-1.5 rounded-lg bg-white shadow-sm hover:bg-gray-50">
+    <div className="max-w-[2000px] mx-auto p-4">
+      <div className="grid grid-cols-3 items-center mb-4">
+        <div className="flex items-center gap-2 justify-self-start">
+          <button onClick={goToPreviousWeek} className="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700">
             &larr;
           </button>
-          <button onClick={goToToday} className="px-3 py-1.5 rounded-lg bg-white shadow-sm hover:bg-gray-50 text-sm">
-            Today
+          <button
+            onClick={() => setShowWeekPicker(true)}
+            className="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center"
+            aria-label="Pick a week"
+          >
+            <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4">
+              <rect x="3" y="4" width="14" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M3 8h14M7 2.5v3M13 2.5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
           </button>
-          <button onClick={goToNextWeek} className="px-3 py-1.5 rounded-lg bg-white shadow-sm hover:bg-gray-50">
+          <button onClick={goToNextWeek} className="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700">
             &rarr;
           </button>
         </div>
-        <div className="text-center">
-          {/* Week number as the primary heading (see design discussion:
-              "the date selector could say the week number instead of
-              today/the date") - the exact date range kept as a smaller
-              subtitle underneath rather than dropped entirely, since
-              it's still genuinely useful for knowing exactly which
-              days you're looking at, just not the FIRST thing you read. */}
-          <h1 className="text-xl font-bold text-gray-800">Week {weekNumber}</h1>
-          <div className="text-xs text-gray-400">
-            {startDate} &ndash; {endDate}
-          </div>
+        <div className="text-center justify-self-center">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">Week {weekNumber}</h1>
+          <div className="text-xs text-gray-400 dark:text-gray-500">{formatWeekRangeLabel(startDate, endDate)}</div>
         </div>
         <div />
       </div>
 
-      <WeekMacroSummary weekTotals={weekTotals} goal={goalQuery.data} daysInWeekSoFar={daysInWeekSoFar} />
+      <WeekMacroSummary weekTotals={weekTotals} targetTotals={targetTotals} />
 
-      {/* px-1 here specifically so the today-column's ring (see
-          DayColumn) has room to render fully - without it, the ring on
-          the first/last column sits flush against this scroll
-          container's own edge and gets visually clipped (see design
-          discussion: "the little border on today's date is getting
-          cropped away"). */}
-      <div className="flex gap-2 overflow-x-auto overflow-y-visible px-1 pb-4">
+      {/* overflow-x-auto stays as a safety net for genuinely narrow
+          viewports, but DayColumn's min-width is now small enough that
+          7 columns should fit without scrolling on ordinary desktop
+          widths - see DayColumn's own comment. */}
+      <div className="flex gap-2 overflow-x-auto px-1 pt-1 pb-4">
         {dates.map((date) => (
           <DayColumn
             key={date}
             date={date}
             logsByMeal={grouped[date]}
-            goal={goalQuery.data}
+            goal={resolveGoalForDate(goals, date)}
             onMealClick={(d, mealType) => setSelectedMeal({ date: d, mealType })}
-            onItemClick={setSelectedLog}
+            onOpenDetail={setViewingLog}
+            onQuantityClick={setQuantityLog}
+            onDelete={setDeletingLog}
+            onAddToGroceryList={handleAddToGroceryList}
+            onAddItem={(d, mealType) => setAddingTo({ date: d, mealType })}
           />
         ))}
       </div>
@@ -129,13 +131,42 @@ export function WeekView() {
           date={selectedMeal.date}
           mealType={selectedMeal.mealType}
           logs={grouped[selectedMeal.date][selectedMeal.mealType]}
-          goal={goalQuery.data}
+          goal={selectedMealGoal}
           onClose={() => setSelectedMeal(null)}
-          onItemClick={setSelectedLog}
+          onOpenDetail={setViewingLog}
+          onQuantityClick={setQuantityLog}
+          onDelete={setDeletingLog}
+          onAddToGroceryList={handleAddToGroceryList}
+          onAddItem={(d, mealType) => setAddingTo({ date: d, mealType })}
         />
       )}
 
-      {liveSelectedLog && <ItemDetailModal log={liveSelectedLog} onClose={() => setSelectedLog(null)} />}
+      {liveViewingLog && <ItemDetailModal log={liveViewingLog} onClose={() => setViewingLog(null)} />}
+
+      {liveQuantityLog && <QuantityEditDialog log={liveQuantityLog} onClose={() => setQuantityLog(null)} />}
+
+      {deletingLog && (
+        <ConfirmDialog
+          title="Delete this log?"
+          message={`Remove "${logDisplayName(deletingLog)}" from this meal. This can't be undone.`}
+          confirmLabel="Delete"
+          danger
+          isPending={deleteLog.isPending}
+          error={deleteLog.isError ? (deleteLog.error as Error).message : null}
+          onCancel={() => setDeletingLog(null)}
+          onConfirm={() => deleteLog.mutate(deletingLog.id, { onSuccess: () => setDeletingLog(null) })}
+        />
+      )}
+
+      {addingTo && <AddItemDialog date={addingTo.date} mealType={addingTo.mealType} onClose={() => setAddingTo(null)} />}
+
+      {showWeekPicker && (
+        <WeekPickerDialog
+          currentAnchor={anchorDate}
+          onSelectWeek={setAnchorDate}
+          onClose={() => setShowWeekPicker(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,34 +1,27 @@
-import type { Goal, NutritionTotals } from "@/api/types";
-import { parseDecimal } from "@/lib/format";
+import type { NutritionTotals } from "@/api/types";
 import { MACRO_COLORS } from "@/lib/colors";
 import { MacroBar } from "./MacroBar";
 
 interface WeekMacroSummaryProps {
   weekTotals: NutritionTotals;
-  goal: Goal | undefined;
-  daysInWeekSoFar: number;
+  /** Pre-summed - see lib/goals.ts's sumGoalTargetsForWeek. Each day's
+   * OWN applicable goal already resolved and added in, not one goal's
+   * daily target multiplied by a day count. */
+  targetTotals: NutritionTotals;
 }
 
-/** Goal targets are PER DAY on the backend (see GoalBase's own fields -
- * kcal_target etc are daily targets, same figure the day view uses) -
- * multiplied here by how many days of the week have actually happened
- * so far, not by 7 flat, so a Wednesday check-in compares against
- * Mon-Wed's worth of budget rather than the whole week's, matching
- * how the Android app's own weekly summary screen handles this. */
-export function WeekMacroSummary({ weekTotals, goal, daysInWeekSoFar }: WeekMacroSummaryProps) {
-  if (!goal) return null;
-
-  const kcalGoal = Math.round(parseDecimal(goal.kcal_target) * daysInWeekSoFar);
-  const proteinGoal = Math.round(parseDecimal(goal.protein_g_target) * daysInWeekSoFar);
-  const carbsGoal = Math.round(parseDecimal(goal.carbs_g_target) * daysInWeekSoFar);
-  const fatGoal = Math.round(parseDecimal(goal.fat_g_target) * daysInWeekSoFar);
-  const fiberGoal = Math.round(parseDecimal(goal.fiber_g_target) * daysInWeekSoFar);
+export function WeekMacroSummary({ weekTotals, targetTotals }: WeekMacroSummaryProps) {
+  const kcalGoal = Math.round(targetTotals.kcal);
+  const proteinGoal = Math.round(targetTotals.protein_g);
+  const carbsGoal = Math.round(targetTotals.carbs_g);
+  const fatGoal = Math.round(targetTotals.fat_g);
+  const fiberGoal = Math.round(targetTotals.fiber_g);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-4">
       <div className="flex items-baseline justify-between mb-1">
-        <h2 className="text-lg font-semibold text-gray-800">This week</h2>
-        <span className="text-sm text-gray-500">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">This week</h2>
+        <span className="text-sm text-gray-500 dark:text-gray-400">
           {weekTotals.kcal} / {kcalGoal} Cal
         </span>
       </div>

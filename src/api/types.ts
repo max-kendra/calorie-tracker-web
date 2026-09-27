@@ -1,8 +1,7 @@
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
+export type ItemType = "product" | "ingredient";
+export type RecipeType = "recipe" | "meal";
 
-/** Mirrors NutritionTotals from app/schemas.py - always whole numbers,
- * rounded UP for display on the backend already. Never re-round these
- * client-side. */
 export interface NutritionTotals {
   kcal: number;
   protein_g: number;
@@ -11,9 +10,6 @@ export interface NutritionTotals {
   fiber_g: number;
 }
 
-/** Mirrors ExtendedNutritionTotals - adds sugar/countable_sugar/
- * saturated_fat/sodium, only returned by the daily/weekly summary
- * endpoint. */
 export interface ExtendedNutritionTotals extends NutritionTotals {
   sugar_g: number;
   countable_sugar_g: number;
@@ -21,12 +17,6 @@ export interface ExtendedNutritionTotals extends NutritionTotals {
   sodium_mg: number;
 }
 
-/** One ingredient row from a recipe log's frozen snapshot - mirrors
- * LoggedRecipeIngredientOut. The macro fields (everything past kcal)
- * are optional/nullable: rows logged before the snapshot was widened
- * past kcal+grams have no historical value to backfill for those - see
- * that migration's own note in app/models.py. Treat null as "unknown",
- * never coerce to 0. */
 export interface LoggedRecipeIngredient {
   item_id: number | null;
   item_name: string;
@@ -46,14 +36,9 @@ export interface LoggedRecipeIngredient {
   sodium_mg: number | null;
 }
 
-/** Mirrors LogOut - one logged item/recipe entry. `quantity` and
- * `serving_size_weight_g` are Decimal on the backend and come across
- * as strings, same convention the Android client uses - parse with
- * parseFloat when doing math, never trust JS's own number precision
- * for the raw value display (see src/lib/format.ts). */
 export interface Log {
   id: number;
-  date: string; // "YYYY-MM-DD"
+  date: string;
   meal_type: MealType;
   item_id: number | null;
   recipe_id: number | null;
@@ -74,37 +59,30 @@ export interface Log {
   image_path: string | null;
   serving_size_name: string | null;
   serving_size_weight_g: string | null;
-  // Frozen per-ingredient breakdown for a RECIPE log - see backend
-  // LoggedRecipeIngredient's own docstring. Empty for item-based logs.
   ingredients: LoggedRecipeIngredient[];
-  // True for every log created after ingredient snapshotting shipped -
-  // lets you tell "ingredients is empty because this is an item log /
-  // a recipe with genuinely none" apart from "empty because this log
-  // predates snapshotting and that history is gone".
   has_ingredient_snapshot: boolean;
-  // The recipe's total servings YIELD at the time this was logged
-  // (only set for recipe_id logs) - the denominator for `quantity`
-  // (servings consumed) once the recipe's own servings count has
-  // since been edited.
   recipe_servings_logged: string | null;
 }
 
-/** Mirrors DailySummary - GET /logs/summary/daily. */
 export interface DailySummary {
   date: string;
   totals: ExtendedNutritionTotals;
 }
 
-/** Mirrors MealGoalSplitOut. */
 export interface MealGoalSplit {
   meal_type: MealType;
   pct_of_kcal: string;
   computed_totals: NutritionTotals;
 }
 
-/** Mirrors GoalOut - GET /goals/active. All *_target fields are
- * Decimal on the backend (strings here); meal_splits' computed_totals
- * are pre-rounded ints. */
+/** Request payload shape for a meal split - mirrors MealGoalSplitIn on
+ * the backend exactly (no computed_totals - that's output-only, always
+ * derived live from the parent goal's targets, never sent up). */
+export interface MealGoalSplitInput {
+  meal_type: MealType;
+  pct_of_kcal: number;
+}
+
 export interface Goal {
   id: number;
   start_date: string;
@@ -115,4 +93,164 @@ export interface Goal {
   fat_g_target: string;
   fiber_g_target: string;
   meal_splits: MealGoalSplit[];
+}
+
+export interface GroceryStore {
+  id: number;
+  name: string;
+}
+
+export interface GroceryTrip {
+  id: number;
+  date: string;
+  label: string | null;
+  store_id: number | null;
+  store: GroceryStore | null;
+}
+
+export interface GroceryListEntry {
+  id: number;
+  item_id: number | null;
+  item_name: string;
+  is_placeholder: boolean;
+  grocery_stores: GroceryStore[];
+  trip_id: number | null;
+  quantity: string | null;
+}
+
+export interface ServingSize {
+  id: number;
+  item_id: number;
+  name: string;
+  weight_g: string;
+}
+
+export interface Item {
+  id: number;
+  name: string;
+  brand: string | null;
+  type: ItemType;
+  image_path: string | null;
+  kcal_100g: string | null;
+}
+
+export interface ItemDetail {
+  item_id: number;
+  name: string;
+  barcode: string | null;
+  brand: string | null;
+  image_path: string | null;
+  kcal_100g: string | null;
+  protein_100g: string | null;
+  carbs_100g: string | null;
+  fat_100g: string | null;
+  fiber_100g: string | null;
+  sugar_100g: string | null;
+  saturated_fat_100g: string | null;
+  sodium_mg_100g: string | null;
+  counts_as_added_sugar: boolean | null;
+  type: ItemType;
+  origin: string;
+  serving_sizes: ServingSize[];
+  grocery_stores: GroceryStore[];
+  last_logged_at: string | null;
+}
+
+/** Mirrors BarcodeScanResult on the backend. */
+export interface BarcodeScanResult {
+  barcode: string | null;
+  decoder_used: string | null;
+  checksum_valid: boolean | null;
+  item: ItemDetail | null;
+}
+
+/** Mirrors OcrMacros/OcrScanResult on the backend. */
+export interface OcrMacros {
+  kcal_100g: string | null;
+  protein_100g: string | null;
+  carbs_100g: string | null;
+  fat_100g: string | null;
+  fiber_100g: string | null;
+  sugar_100g: string | null;
+  saturated_fat_100g: string | null;
+  sodium_mg_100g: string | null;
+}
+
+export interface OcrScanResult {
+  raw_text: string;
+  detected_language: string | null;
+  per_100g_confirmed: boolean;
+  macros: OcrMacros;
+}
+
+export interface Recipe {
+  recipe_id: number;
+  name: string;
+  recipe_type: RecipeType;
+  image_path: string | null;
+  kcal_per_serving: number | null;
+}
+
+/** Mirrors RecipeIngredientOut on the backend. */
+export interface RecipeIngredientDetail {
+  item_id: number;
+  item_name: string;
+  serving_size_id: number | null;
+  serving_size_name: string | null;
+  serving_size_weight_g: string | null;
+  quantity: string;
+}
+
+/** Full recipe shape - mirrors RecipeOut exactly. instructions and
+ * image_path exist on the backend already but are deliberately left
+ * out of this pass (see design discussion: instructions needs its own
+ * design session, and image upload is a separate piece of work). */
+export interface RecipeStep {
+  id: number;
+  step_number: number;
+  text: string;
+  timer_seconds: number | null;
+}
+
+export interface RecipeDetail {
+  recipe_id: number;
+  name: string;
+  recipe_type: RecipeType;
+  source_url: string | null;
+  image_path: string | null;
+  servings: string;
+  ingredients: RecipeIngredientDetail[];
+  steps: RecipeStep[];
+  totals: ExtendedNutritionTotals;
+  totals_per_serving: ExtendedNutritionTotals;
+  last_logged_at: string | null;
+}
+
+export type PrimaryHormone = "estrogen" | "testosterone";
+export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active";
+export type GoalType = "lose" | "maintain" | "gain";
+
+/** Mirrors UserProfileOut on the backend. */
+export interface UserProfile {
+  id: number;
+  name: string | null;
+  profile_pic_path: string | null;
+  height_cm: number | null;
+  age: number | null;
+  weight_kg: string | null;
+  starting_weight_kg: string | null;
+  goal_weight_kg: string | null;
+  primary_hormone: PrimaryHormone | null;
+  activity_level: ActivityLevel | null;
+  goal_type: GoalType | null;
+  timezone: string;
+  updated_at: string;
+}
+
+/** Mirrors WeightHistoryEntryOut on the backend - a read-only mirror
+ * of Health Connect's own readings (see the backend model's own
+ * docstring), never edited from the web. */
+export interface WeightHistoryEntry {
+  recorded_at: string;
+  weight_kg: string;
 }

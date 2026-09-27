@@ -1,13 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        // Exact hex values from android/.../MealVisuals.kt's
-        // backgroundFor() - kept in sync by hand since there's no
-        // shared design-token source between the two clients yet. If
-        // these ever drift, MealVisuals.kt is the source of truth.
         meal: {
           breakfast: "#FFE0B2",
           "breakfast-dark": "#4A3418",
@@ -18,8 +15,6 @@ export default {
           snack: "#FFCCBC",
           "snack-dark": "#4A2E24",
         },
-        // Exact hex values from android/.../MacroProgressRing.kt's
-        // MacroColors object - same "kept in sync by hand" caveat.
         macro: {
           protein: "#E8837A",
           fat: "#E6B800",

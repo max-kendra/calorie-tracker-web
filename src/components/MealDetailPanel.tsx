@@ -2,6 +2,7 @@ import type { Goal, Log, MealType } from "@/api/types";
 import { MEAL_LABELS, sumTotals } from "@/lib/macros";
 import { MEAL_COLORS, MACRO_COLORS } from "@/lib/colors";
 import { shortDateLabel, weekdayLabel } from "@/lib/dates";
+import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { MacroBar } from "./MacroBar";
 import { ItemRow } from "./ItemRow";
 
@@ -11,30 +12,42 @@ interface MealDetailPanelProps {
   logs: Log[];
   goal: Goal | undefined;
   onClose: () => void;
-  onItemClick: (log: Log) => void;
+  onOpenDetail: (log: Log) => void;
+  onQuantityClick: (log: Log) => void;
+  onDelete: (log: Log) => void;
+  onAddToGroceryList: (log: Log) => void;
+  onAddItem: (date: string, mealType: MealType) => void;
 }
 
-/** Slide-over from the right rather than a modal dialog (see design
- * discussion: "i'm not sure if a window to the side or a modal dialog
- * window would be better") - chosen so the week grid stays visible
- * and in-place behind it (this is a drill-down INTO a meal you're
- * still oriented within the week for, not an interruption), and so it
- * doesn't compete for the same modal layer as ItemDetailModal, which
- * needs to be openable ON TOP of this panel (clicking an item inside
- * here opens item detail as an actual centered modal - a more
- * focused, form-like interaction, appropriate for something that's
- * also an edit screen). */
-export function MealDetailPanel({ date, mealType, logs, goal, onClose, onItemClick }: MealDetailPanelProps) {
+export function MealDetailPanel({
+  date,
+  mealType,
+  logs,
+  goal,
+  onClose,
+  onOpenDetail,
+  onQuantityClick,
+  onDelete,
+  onAddToGroceryList,
+  onAddItem,
+}: MealDetailPanelProps) {
+  useEscapeToClose(onClose);
   const totals = sumTotals(logs);
   const split = goal?.meal_splits.find((s) => s.meal_type === mealType);
   const color = MEAL_COLORS[mealType];
 
   return (
     <>
-      {/* Backdrop - click to close, same as ItemDetailModal's. */}
       <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-white shadow-xl z-50 flex flex-col">
+      <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-white dark:bg-gray-800 shadow-xl z-50 flex flex-col">
         <div className="px-4 py-3" style={{ backgroundColor: color }}>
+          {/* No dark: variants anywhere in this block - it sits on the
+              meal's own fixed pastel color (breakfast orange etc),
+              which does NOT change between light/dark mode, so its
+              text needs to stay a fixed dark color too, not flip
+              light in dark mode (see design discussion - this was
+              genuinely unreadable before: light text on a light
+              background regardless of the app's own theme). */}
           <div className="flex items-start justify-between">
             <div>
               <div className="text-xs text-gray-600">
@@ -48,7 +61,7 @@ export function MealDetailPanel({ date, mealType, logs, goal, onClose, onItemCli
           </div>
         </div>
 
-        <div className="p-4 space-y-3 border-b border-gray-100">
+        <div className="p-4 space-y-3 border-b border-gray-100 dark:border-gray-700">
           {split ? (
             <>
               <MacroBar label="Protein" eaten={totals.protein_g} goal={split.computed_totals.protein_g} color={MACRO_COLORS.protein} compact />
@@ -57,18 +70,24 @@ export function MealDetailPanel({ date, mealType, logs, goal, onClose, onItemCli
               <MacroBar label="Fiber" eaten={totals.fiber_g} goal={split.computed_totals.fiber_g} color={MACRO_COLORS.fiber} compact />
             </>
           ) : (
-            <div className="text-sm text-gray-500">
-              {totals.kcal} Cal · {totals.protein_g}P · {totals.fat_g}F · {totals.carbs_g}C · {totals.fiber_g}Fi
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {totals.kcal} Cal - {totals.protein_g}P - {totals.fat_g}F - {totals.carbs_g}C - {totals.fiber_g}Fi
             </div>
           )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          {logs.length === 0 ? (
-            <div className="text-sm text-gray-400">Nothing logged for this meal</div>
-          ) : (
-            logs.map((log) => <ItemRow key={log.id} log={log} onClick={onItemClick} />)
-          )}
+          {logs.map((log) => (
+            <ItemRow key={log.id} log={log} onOpenDetail={onOpenDetail} onQuantityClick={onQuantityClick} onDelete={onDelete} onAddToGroceryList={onAddToGroceryList} />
+          ))}
+          <button
+            onClick={() => onAddItem(date, mealType)}
+            className="w-full mt-1 rounded-lg border border-dashed border-gray-200 dark:border-gray-600 py-2 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition group/add"
+          >
+            <span className="w-6 h-6 rounded-full bg-gray-200 group-hover/add:bg-gray-300 flex items-center justify-center text-gray-500 dark:text-gray-400 text-base leading-none">
+              +
+            </span>
+          </button>
         </div>
       </div>
     </>

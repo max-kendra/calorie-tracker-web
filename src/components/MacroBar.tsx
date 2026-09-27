@@ -6,18 +6,9 @@ interface MacroBarProps {
   goal: number;
   color: string;
   unit?: string;
-  /** Compact = thin bar, small text, no "+X over" line - used at the
-   * meal-header/day-header level where space is tight. Full = the
-   * larger week-summary treatment. */
   compact?: boolean;
 }
 
-/** Same treatment as the Android app's WeeklyMacroBar (see that
- * composable's own doc comment): a base fill to `eaten/goal`, plus a
- * SECOND, darker-shaded segment stacked on top (not appended after)
- * showing how far over goal you are, capped at a second full bar's
- * width. Two Boxes/divs at the same position, not a single bar
- * extending past 100%, since the container has no room for that. */
 export function MacroBar({ label, eaten, goal, color, unit = "g", compact = false }: MacroBarProps) {
   const fraction = goal > 0 ? Math.min(eaten / goal, 1) : 0;
   const over = eaten - goal;
@@ -27,8 +18,8 @@ export function MacroBar({ label, eaten, goal, color, unit = "g", compact = fals
   return (
     <div className="w-full">
       <div className={`flex items-baseline justify-between ${compact ? "text-xs" : "text-sm"}`}>
-        <span className="font-medium text-gray-700">{label}</span>
-        <span className="text-gray-500">
+        <span className="font-medium text-gray-700 dark:text-gray-200">{label}</span>
+        <span className="text-gray-500 dark:text-gray-400">
           {eaten}
           {unit} / {goal}
           {unit}
@@ -36,7 +27,7 @@ export function MacroBar({ label, eaten, goal, color, unit = "g", compact = fals
       </div>
       <div
         className={`relative w-full ${barHeight} rounded-full mt-1 overflow-hidden`}
-        style={{ backgroundColor: `${color}38` /* ~22% alpha, matches Android's copy(alpha=0.22f) */ }}
+        style={{ backgroundColor: `${color}38` }}
       >
         <div
           className="absolute inset-y-0 left-0 rounded-full"
