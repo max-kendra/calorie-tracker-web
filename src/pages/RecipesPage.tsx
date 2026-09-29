@@ -40,7 +40,7 @@ export function RecipesPage() {
             key={chip}
             onClick={() => setFilter(chip)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition ${
-              filter === chip ? "bg-blue-500 text-white" : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-900 dark:bg-gray-700 shadow-sm"
+              filter === chip ? "bg-blue-500 text-white" : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm"
             }`}
           >
             {FILTER_LABELS[chip]}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { ItemType } from "@/api/types";
+import type { ItemDetail, ItemType } from "@/api/types";
+import type { ItemFormPrefill } from "@/lib/itemPrefill";
 import {
   useCreateGroceryStore,
   useCreateItem,
@@ -17,6 +18,18 @@ import { useEscapeToClose } from "@/lib/useEscapeToClose";
 interface ItemEditDialogProps {
   itemId: number | null;
   onClose: () => void;
+  /** Starts a NEW item's form pre-filled (currently: from a USDA
+   * search result) instead of blank. Ignored when editing an existing
+   * item. */
+  prefill?: ItemFormPrefill;
+  /** Called with the created item instead of the default behavior of
+   * staying open in "Edit item" mode - lets a caller that opened this
+   * from the middle of another flow (add-to-meal, add-as-ingredient)
+   * carry straight on with the new item. The caller is responsible
+   * for closing the dialog. */
+  onCreated?: (item: ItemDetail) => void;
+  /** Renders above another open dialog instead of alongside it. */
+  stacked?: boolean;
 }
 
 function parseOptionalNumber(value: string): number | null {
@@ -30,7 +43,7 @@ const inputClass =
   "w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2 text-sm";
 const labelClass = "block text-xs text-gray-500 dark:text-gray-400 mb-1";
 
-export function ItemEditDialog({ itemId, onClose }: ItemEditDialogProps) {
+export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }: ItemEditDialogProps) {
   useEscapeToClose(onClose);
   const isCreating = itemId == null;
 
@@ -53,19 +66,19 @@ export function ItemEditDialog({ itemId, onClose }: ItemEditDialogProps) {
   const [createdItemId, setCreatedItemId] = useState<number | null>(null);
   const effectiveItemId = createdItemId ?? itemId;
 
-  const [name, setName] = useState("");
-  const [brand, setBrand] = useState("");
+  const [name, setName] = useState(prefill?.name ?? "");
+  const [brand, setBrand] = useState(prefill?.brand ?? "");
   const [barcode, setBarcode] = useState("");
-  const [type, setType] = useState<ItemType>("product");
+  const [type, setType] = useState<ItemType>(prefill?.type ?? "product");
   const [imagePath, setImagePath] = useState<string | null>(null);
-  const [kcal100g, setKcal100g] = useState("");
-  const [protein100g, setProtein100g] = useState("");
-  const [carbs100g, setCarbs100g] = useState("");
-  const [fat100g, setFat100g] = useState("");
-  const [fiber100g, setFiber100g] = useState("");
-  const [sugar100g, setSugar100g] = useState("");
-  const [saturatedFat100g, setSaturatedFat100g] = useState("");
-  const [sodiumMg100g, setSodiumMg100g] = useState("");
+  const [kcal100g, setKcal100g] = useState(prefill?.kcal100g ?? "");
+  const [protein100g, setProtein100g] = useState(prefill?.protein100g ?? "");
+  const [carbs100g, setCarbs100g] = useState(prefill?.carbs100g ?? "");
+  const [fat100g, setFat100g] = useState(prefill?.fat100g ?? "");
+  const [fiber100g, setFiber100g] = useState(prefill?.fiber100g ?? "");
+  const [sugar100g, setSugar100g] = useState(prefill?.sugar100g ?? "");
+  const [saturatedFat100g, setSaturatedFat100g] = useState(prefill?.saturatedFat100g ?? "");
+  const [sodiumMg100g, setSodiumMg100g] = useState(prefill?.sodiumMg100g ?? "");
   const [countsAsAddedSugar, setCountsAsAddedSugar] = useState(false);
   const [selectedStoreIds, setSelectedStoreIds] = useState<Set<number>>(new Set());
   const [newStoreName, setNewStoreName] = useState("");
@@ -115,9 +128,15 @@ export function ItemEditDialog({ itemId, onClose }: ItemEditDialogProps) {
   function handleSave() {
     if (!name.trim()) return;
     if (isCreating && createdItemId == null) {
-      createItem.mutate(buildPayload(), {
-        onSuccess: (created) => setCreatedItemId(created.item_id),
-      });
+      createItem.mutate(
+        { ...buildPayload(), ...(prefill?.origin ? { origin: prefill.origin } : {}) },
+        {
+          onSuccess: (created) => {
+            if (onCreated) onCreated(created);
+            else setCreatedItemId(created.item_id);
+          },
+        },
+      );
     } else if (effectiveItemId != null) {
       updateItem.mutate({ itemId: effectiveItemId, payload: buildPayload() }, { onSuccess: onClose });
     }
@@ -209,8 +228,8 @@ export function ItemEditDialog({ itemId, onClose }: ItemEditDialogProps) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 p-4 pointer-events-none">
+      <div className={`fixed inset-0 bg-black/30 ${stacked ? "z-[60]" : "z-40"}`} onClick={onClose} />
+      <div className={`fixed inset-0 ${stacked ? "z-[70]" : "z-50"} flex items-start justify-center pt-10 p-4 pointer-events-none`}>
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh] pointer-events-auto">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
@@ -222,6 +241,12 @@ export function ItemEditDialog({ itemId, onClose }: ItemEditDialogProps) {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {isCreating && prefill?.origin === "usda_import" && (
+              <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-2">
+                Imported from USDA FoodData Central - please review the name and values before saving. A blank
+                field means USDA didn't report it.
+              </div>
+            )}
             <div className="flex items-center gap-3">
               {imagePath ? (
                 <img src={`/${imagePath}`} alt="" className="w-16 h-16 rounded-lg object-cover" />

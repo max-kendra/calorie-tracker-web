@@ -21,6 +21,21 @@ export class UnauthorizedError extends Error {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
+/** FastAPI errors arrive as {"detail": "..."}; showing the sentence
+ * itself instead of the raw JSON wrapper matters most for messages
+ * written to be read by a person (e.g. the USDA rate-limit 502, which
+ * explains exactly what to do about it). Validation errors (422) carry
+ * an array/object detail instead - those stay as raw text. */
+function extractDetail(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.detail === "string") return parsed.detail;
+  } catch {
+    // Not JSON - fall through to the raw text.
+  }
+  return raw;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const apiKey = getStoredApiKey();
   const isFormData = init.body instanceof FormData;
@@ -37,8 +52,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new UnauthorizedError();
   }
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`${response.status} ${response.statusText}${detail ? `: ${detail}` : ""}`);
+    const raw = await response.text().catch(() => "");
+    throw new Error(`${response.status} ${response.statusText}${raw ? `: ${extractDetail(raw)}` : ""}`);
   }
   if (response.status === 204) {
     return undefined as T;

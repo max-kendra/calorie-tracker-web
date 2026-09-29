@@ -16,6 +16,7 @@ import type {
   Recipe,
   RecipeDetail,
   ServingSize,
+  UsdaFood,
   UserProfile,
   WeightHistoryEntry,
 } from "./types";
@@ -609,5 +610,37 @@ export function useDeleteRecipeStep() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["recipe-detail", variables.recipeId] });
     },
+  });
+}
+
+// ---- USDA FoodData Central ----
+
+export type UsdaSearchKind = "whole" | "branded";
+
+// Foundation + SR Legacy are lab-analyzed and best for raw/whole
+// ingredients; Branded covers packaged products by name (see the
+// backend's search_usda docstring).
+const USDA_DATA_TYPES: Record<UsdaSearchKind, string> = {
+  whole: "Foundation,SR Legacy",
+  branded: "Branded",
+};
+
+/** Only fires for a non-null query - the caller sets it on an explicit
+ * click, never on typing. The default USDA key (DEMO_KEY) allows 30
+ * requests/hour SHARED with every other DEMO_KEY user, so this is
+ * deliberately conservative: no automatic retry (a retried 429 just
+ * burns another request), no refetch on window focus, and results
+ * cached for an hour so re-running the same search costs nothing. */
+export function useUsdaSearch(query: string | null, kind: UsdaSearchKind) {
+  return useQuery({
+    queryKey: ["usda-search", query, kind],
+    queryFn: () =>
+      api.get<UsdaFood[]>(
+        `/usda/search?query=${encodeURIComponent(query ?? "")}&data_type=${encodeURIComponent(USDA_DATA_TYPES[kind])}&page_size=15`,
+      ),
+    enabled: !!query,
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60 * 60 * 1000,
   });
 }

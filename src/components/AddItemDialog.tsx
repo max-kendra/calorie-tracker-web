@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import type { Item, ItemType, MealType, Recipe, RecipeType } from "@/api/types";
 import { useCreateLog, useItemSearch, useRecipeSearch } from "@/api/hooks";
 import { parseDecimal } from "@/lib/format";
+import { usdaFoodToPrefill, type ItemFormPrefill } from "@/lib/itemPrefill";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
+import { ItemEditDialog } from "./ItemEditDialog";
 import { ServingPicker } from "./ServingPicker";
+import { UsdaSearchPanel } from "./UsdaSearchPanel";
 
 interface AddItemDialogProps {
   date: string;
@@ -53,6 +56,15 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
   const [selected, setSelected] = useState<{ kind: "item" | "recipe"; id: number; name: string } | null>(null);
   const [quantityInput, setQuantityInput] = useState("100");
   const [servingSizeId, setServingSizeId] = useState<number | null>(null);
+  // USDA fallback (see design discussion: nothing matched among your own
+  // items) - showUsda swaps the results area for a USDA search, and a
+  // picked result opens the normal item form pre-filled for review.
+  const [showUsda, setShowUsda] = useState(false);
+  const [usdaPrefill, setUsdaPrefill] = useState<ItemFormPrefill | null>(null);
+  // Plain manual create - no USDA, no prefill, for whenever the person
+  // just wants to type in a new item themselves (USDA doesn't have
+  // everything, and sometimes it's just faster to enter it by hand).
+  const [showManualCreate, setShowManualCreate] = useState(false);
 
   const debouncedQuery = useDebouncedValue(query, 300);
 
@@ -67,8 +79,8 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
     ? (itemsQuery.data ?? [])
         .filter((item: Item) => filter === "all" || filter === (item.type as ItemType))
         .map((item) => ({
-          key: `item-${item.id}`,
-          id: item.id,
+          key: `item-${item.item_id}`,
+          id: item.item_id,
           name: item.brand ? `${item.name} (${item.brand})` : item.name,
           kcalLabel: item.kcal_100g ? `${Math.round(parseDecimal(item.kcal_100g))} Cal/100g` : "",
           kind: "item" as const,
@@ -168,20 +180,24 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
                     autoFocus
                   />
                   <button
-                    onClick={onClose}
-                    aria-label="Close"
-                    className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none px-1"
+                    onClick={() => {
+                      setQuery("");
+                      setShowUsda(false);
+                    }}
+                    aria-label="Clear search"
+                    disabled={query.length === 0 && !showUsda}
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 text-xl leading-none px-1"
                   >
                     &times;
                   </button>
                 </div>
-                <div className="flex gap-1.5 mt-3 flex-wrap">
+                <div className={`flex gap-1.5 mt-3 flex-wrap ${showUsda ? "hidden" : ""}`}>
                   {(Object.keys(FILTER_LABELS) as FilterChip[]).map((chip) => (
                     <button
                       key={chip}
                       onClick={() => setFilter(chip)}
                       className={`px-3 py-1 rounded-full text-xs font-medium transition ${
-                        filter === chip ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-900 dark:bg-gray-700 text-gray-600 dark:text-gray-300 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600"
+                        filter === chip ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                       }`}
                     >
                       {FILTER_LABELS[chip]}
@@ -190,12 +206,34 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto px-4 pb-4">
-                {debouncedQuery.trim().length === 0 ? (
+                {showUsda ? (
+                  <UsdaSearchPanel
+                    initialQuery={query.trim()}
+                    onPick={(food) => setUsdaPrefill(usdaFoodToPrefill(food))}
+                    onBack={() => setShowUsda(false)}
+                  />
+                ) : debouncedQuery.trim().length === 0 ? (
                   <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">Start typing to search</div>
                 ) : isSearching && results.length === 0 ? (
                   <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">Searching...</div>
                 ) : results.length === 0 ? (
-                  <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No matches</div>
+                  <div className="text-center py-8">
+                    <div className="text-sm text-gray-400 dark:text-gray-500 mb-3">No matches</div>
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={() => setShowUsda(true)}
+                        className="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm hover:bg-blue-600"
+                      >
+                        Search USDA for "{query.trim()}"
+                      </button>
+                      <button
+                        onClick={() => setShowManualCreate(true)}
+                        className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm hover:bg-gray-200 dark:hover:bg-gray-600"
+                      >
+                        Create new item
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   results.map((row) => (
                     <button
@@ -208,11 +246,58 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
                     </button>
                   ))
                 )}
+                {!showUsda && results.length > 0 && (
+                  <div className="flex items-center justify-center gap-3 py-3">
+                    <button
+                      onClick={() => setShowUsda(true)}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Not finding it? Search USDA
+                    </button>
+                    <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
+                    <button
+                      onClick={() => setShowManualCreate(true)}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Create new item
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
         </div>
       </div>
+
+      {usdaPrefill && (
+        <ItemEditDialog
+          itemId={null}
+          stacked
+          prefill={usdaPrefill}
+          onClose={() => setUsdaPrefill(null)}
+          onCreated={(created) => {
+            setUsdaPrefill(null);
+            setShowUsda(false);
+            setSelected({ kind: "item", id: created.item_id, name: created.name });
+            setQuantityInput("100");
+            setServingSizeId(null);
+          }}
+        />
+      )}
+
+      {showManualCreate && (
+        <ItemEditDialog
+          itemId={null}
+          stacked
+          onClose={() => setShowManualCreate(false)}
+          onCreated={(created) => {
+            setShowManualCreate(false);
+            setSelected({ kind: "item", id: created.item_id, name: created.name });
+            setQuantityInput("100");
+            setServingSizeId(null);
+          }}
+        />
+      )}
     </>
   );
 }

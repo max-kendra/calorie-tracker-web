@@ -15,8 +15,11 @@ import {
   useUpdateRecipeStep,
   useUploadItemPhoto,
 } from "@/api/hooks";
+import { usdaFoodToPrefill, type ItemFormPrefill } from "@/lib/itemPrefill";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
+import { ItemEditDialog } from "./ItemEditDialog";
 import { ServingPicker } from "./ServingPicker";
+import { UsdaSearchPanel } from "./UsdaSearchPanel";
 
 interface RecipeEditDialogProps {
   recipeId: number | null;
@@ -99,6 +102,10 @@ function AddIngredientForm({ recipeId }: { recipeId: number }) {
   const [selected, setSelected] = useState<{ id: number; name: string } | null>(null);
   const [quantityInput, setQuantityInput] = useState("100");
   const [servingSizeId, setServingSizeId] = useState<number | null>(null);
+  // USDA fallback, same flow as the add-to-meal search: swap in a USDA
+  // search, and a picked result opens the item form pre-filled for review.
+  const [showUsda, setShowUsda] = useState(false);
+  const [usdaPrefill, setUsdaPrefill] = useState<ItemFormPrefill | null>(null);
 
   function handleAdd() {
     const quantity = parseFloat(quantityInput);
@@ -150,24 +157,72 @@ function AddIngredientForm({ recipeId }: { recipeId: number }) {
     );
   }
 
+  const hasQuery = debouncedQuery.trim().length > 0;
+  const results = itemsQuery.data ?? [];
+
   return (
     <div>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search items to add..."
-        className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm mb-1"
-      />
-      {debouncedQuery.trim().length > 0 &&
-        (itemsQuery.data ?? []).map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setSelected({ id: item.id, name: item.name })}
-            className="w-full text-left text-sm py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1"
-          >
-            {item.name}
-          </button>
-        ))}
+      {showUsda ? (
+        <UsdaSearchPanel
+          initialQuery={query.trim()}
+          onPick={(food) => setUsdaPrefill(usdaFoodToPrefill(food))}
+          onBack={() => setShowUsda(false)}
+        />
+      ) : (
+        <>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search items to add..."
+            className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm mb-1"
+          />
+          {hasQuery &&
+            results.map((item) => (
+              <button
+                key={item.item_id}
+                onClick={() => setSelected({ id: item.item_id, name: item.name })}
+                className="w-full text-left text-sm py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1"
+              >
+                {item.name}
+              </button>
+            ))}
+          {hasQuery && !itemsQuery.isFetching && results.length === 0 && (
+            <div className="text-center py-3">
+              <div className="text-xs text-gray-400 dark:text-gray-500 mb-2">No matches</div>
+              <button
+                onClick={() => setShowUsda(true)}
+                className="px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs hover:bg-blue-600"
+              >
+                Search USDA for "{query.trim()}"
+              </button>
+            </div>
+          )}
+          {hasQuery && results.length > 0 && (
+            <button
+              onClick={() => setShowUsda(true)}
+              className="w-full text-center text-xs text-blue-600 dark:text-blue-400 hover:underline py-2"
+            >
+              Not finding it? Search USDA
+            </button>
+          )}
+        </>
+      )}
+
+      {usdaPrefill && (
+        <ItemEditDialog
+          itemId={null}
+          stacked
+          prefill={usdaPrefill}
+          onClose={() => setUsdaPrefill(null)}
+          onCreated={(created) => {
+            setUsdaPrefill(null);
+            setShowUsda(false);
+            setSelected({ id: created.item_id, name: created.name });
+            setQuantityInput("100");
+            setServingSizeId(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -407,7 +462,7 @@ export function RecipeEditDialog({ recipeId, onClose }: RecipeEditDialogProps) {
                     key={t}
                     onClick={() => setRecipeType(t)}
                     className={`flex-1 py-2 rounded-lg text-sm capitalize border ${
-                      recipeType === t ? "bg-blue-500 text-white border-blue-500" : "border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 dark:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-700"
+                      recipeType === t ? "bg-blue-500 text-white border-blue-500" : "border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                     }`}
                   >
                     {t}

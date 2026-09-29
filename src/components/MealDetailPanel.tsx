@@ -64,6 +64,7 @@ export function MealDetailPanel({
         <div className="p-4 space-y-3 border-b border-gray-100 dark:border-gray-700">
           {split ? (
             <>
+              <MacroBar label="Calories" eaten={totals.kcal} goal={split.computed_totals.kcal} color={MACRO_COLORS.kcal} unit=" Cal" compact />
               <MacroBar label="Protein" eaten={totals.protein_g} goal={split.computed_totals.protein_g} color={MACRO_COLORS.protein} compact />
               <MacroBar label="Fat" eaten={totals.fat_g} goal={split.computed_totals.fat_g} color={MACRO_COLORS.fat} compact />
               <MacroBar label="Carbs" eaten={totals.carbs_g} goal={split.computed_totals.carbs_g} color={MACRO_COLORS.carbs} compact />

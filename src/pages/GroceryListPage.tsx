@@ -12,6 +12,9 @@ import {
   useUpdateGroceryEntry,
 } from "@/api/hooks";
 import { toIsoDate } from "@/lib/dates";
+import { usdaFoodToPrefill, type ItemFormPrefill } from "@/lib/itemPrefill";
+import { ItemEditDialog } from "@/components/ItemEditDialog";
+import { UsdaSearchPanel } from "@/components/UsdaSearchPanel";
 
 const ANY_STORE = "__any__";
 
@@ -37,29 +40,82 @@ function ResolvePlaceholderSearch({ entryId, onDone }: { entryId: number; onDone
   const [query, setQuery] = useState("");
   const itemsQuery = useItemSearch(query);
   const updateEntry = useUpdateGroceryEntry();
+  // USDA fallback (see design discussion), same shape as the add-to-meal
+  // and recipe-ingredient searches - nothing matched among your own
+  // items, so offer to look it up and create a real item from it. A
+  // picked result resolves the placeholder immediately once created,
+  // rather than just selecting it for a further step - resolving IS
+  // the whole action here.
+  const [showUsda, setShowUsda] = useState(false);
+  const [usdaPrefill, setUsdaPrefill] = useState<ItemFormPrefill | null>(null);
+
+  const hasQuery = query.trim().length > 0;
+  const results = (itemsQuery.data ?? []).slice(0, 5);
 
   return (
     <div className="mt-1 border-t border-gray-200 dark:border-gray-600 pt-1">
-      <input
-        autoFocus
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search for the real item..."
-        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded px-2 py-1 text-xs mb-1"
-      />
-      {query.trim().length > 0 &&
-        (itemsQuery.data ?? []).slice(0, 5).map((item) => (
-          <button
-            key={item.id}
-            onClick={() => updateEntry.mutate({ entryId, itemId: item.id }, { onSuccess: onDone })}
-            className="w-full text-left text-xs py-1 px-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded truncate"
-          >
-            {item.brand ? `${item.name} (${item.brand})` : item.name}
+      {showUsda ? (
+        <UsdaSearchPanel
+          initialQuery={query.trim()}
+          onPick={(food) => setUsdaPrefill(usdaFoodToPrefill(food))}
+          onBack={() => setShowUsda(false)}
+        />
+      ) : (
+        <>
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search for the real item..."
+            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded px-2 py-1 text-xs mb-1"
+          />
+          {hasQuery &&
+            results.map((item) => (
+              <button
+                key={item.item_id}
+                onClick={() => updateEntry.mutate({ entryId, itemId: item.item_id }, { onSuccess: onDone })}
+                className="w-full text-left text-xs py-1 px-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded truncate"
+              >
+                {item.brand ? `${item.name} (${item.brand})` : item.name}
+              </button>
+            ))}
+          {hasQuery && !itemsQuery.isFetching && results.length === 0 && (
+            <div className="text-center py-2">
+              <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">No matches</div>
+              <button
+                onClick={() => setShowUsda(true)}
+                className="px-2 py-1 rounded bg-blue-500 text-white text-xs hover:bg-blue-600"
+              >
+                Search USDA for "{query.trim()}"
+              </button>
+            </div>
+          )}
+          {hasQuery && results.length > 0 && (
+            <button
+              onClick={() => setShowUsda(true)}
+              className="w-full text-center text-xs text-blue-600 dark:text-blue-400 hover:underline py-1"
+            >
+              Not finding it? Search USDA
+            </button>
+          )}
+          <button onClick={onDone} className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 mt-1">
+            Cancel
           </button>
-        ))}
-      <button onClick={onDone} className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 mt-1">
-        Cancel
-      </button>
+        </>
+      )}
+
+      {usdaPrefill && (
+        <ItemEditDialog
+          itemId={null}
+          stacked
+          prefill={usdaPrefill}
+          onClose={() => setUsdaPrefill(null)}
+          onCreated={(created) => {
+            setUsdaPrefill(null);
+            updateEntry.mutate({ entryId, itemId: created.item_id }, { onSuccess: onDone });
+          }}
+        />
+      )}
     </div>
   );
 }

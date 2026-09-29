@@ -126,7 +126,7 @@ export interface ServingSize {
 }
 
 export interface Item {
-  id: number;
+  item_id: number;
   name: string;
   brand: string | null;
   type: ItemType;
@@ -253,4 +253,29 @@ export interface UserProfile {
 export interface WeightHistoryEntry {
   recorded_at: string;
   weight_kg: string;
+}
+
+/** Mirrors UsdaMacros - absent/null means USDA didn't report it, which
+ * is different from a real 0 (the backend says so explicitly), so these
+ * stay optional rather than defaulting to "0". */
+export interface UsdaMacros {
+  kcal_100g?: string | null;
+  protein_100g?: string | null;
+  carbs_100g?: string | null;
+  fat_100g?: string | null;
+  fiber_100g?: string | null;
+  sugar_100g?: string | null;
+  saturated_fat_100g?: string | null;
+  sodium_mg_100g?: string | null;
+}
+
+/** Mirrors UsdaFoodSummaryOut. The search result already carries the
+ * full macro set, so picking one needs no second detail request -
+ * which matters, since the default USDA key is heavily rate-limited. */
+export interface UsdaFood {
+  fdc_id: number;
+  description: string;
+  data_type: string;
+  brand_owner: string | null;
+  macros: UsdaMacros;
 }
