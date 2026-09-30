@@ -24,6 +24,9 @@ import { UsdaSearchPanel } from "./UsdaSearchPanel";
 interface RecipeEditDialogProps {
   recipeId: number | null;
   onClose: () => void;
+  /** Renders above another open dialog instead of alongside it - same
+   * pattern as ItemEditDialog's own stacked prop. */
+  stacked?: boolean;
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -339,7 +342,7 @@ function AddStepForm({ recipeId }: { recipeId: number }) {
  * instructions and image upload are deliberately NOT in this dialog -
  * see design discussion: instructions needs its own dedicated design
  * pass, and photo upload is a separate piece of work. */
-export function RecipeEditDialog({ recipeId, onClose }: RecipeEditDialogProps) {
+export function RecipeEditDialog({ recipeId, onClose, stacked }: RecipeEditDialogProps) {
   useEscapeToClose(onClose);
   const isCreating = recipeId == null;
 
@@ -419,8 +422,8 @@ export function RecipeEditDialog({ recipeId, onClose }: RecipeEditDialogProps) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 p-4 pointer-events-none">
+      <div className={`fixed inset-0 bg-black/30 ${stacked ? "z-[60]" : "z-40"}`} onClick={onClose} />
+      <div className={`fixed inset-0 ${stacked ? "z-[70]" : "z-50"} flex items-start justify-center pt-10 p-4 pointer-events-none`}>
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh] pointer-events-auto">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">

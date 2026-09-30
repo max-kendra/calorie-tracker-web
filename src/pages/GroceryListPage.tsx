@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { GroceryListEntry } from "@/api/types";
 import {
+  useCreateGroceryEntry,
   useCreatePlaceholderGroceryEntry,
   useCreateTrip,
   useDeleteGroceryEntry,
@@ -120,6 +121,71 @@ function ResolvePlaceholderSearch({ entryId, onDone }: { entryId: number; onDone
   );
 }
 
+/** Adds to the pool - searches existing items first (same as every
+ * other add-item entry point in the app), with a placeholder as the
+ * explicit fallback rather than the only option (see design
+ * discussion: previously this was a plain free-text field with no
+ * connection to the item catalog at all). */
+function AddToPoolSearch() {
+  const [query, setQuery] = useState("");
+  const itemsQuery = useItemSearch(query);
+  const createEntry = useCreateGroceryEntry();
+  const createPlaceholder = useCreatePlaceholderGroceryEntry();
+
+  const trimmed = query.trim();
+  const hasQuery = trimmed.length > 0;
+  const results = (itemsQuery.data ?? []).slice(0, 5);
+
+  function handleAddItem(itemId: number) {
+    createEntry.mutate(itemId, { onSuccess: () => setQuery("") });
+  }
+
+  function handleAddPlaceholder() {
+    if (!trimmed) return;
+    createPlaceholder.mutate(trimmed, { onSuccess: () => setQuery("") });
+  }
+
+  return (
+    <div className="mt-2">
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search your items to add..."
+        className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs"
+      />
+      {hasQuery && results.length > 0 && (
+        <div className="mt-1 border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
+          {results.map((item) => (
+            <button
+              key={item.item_id}
+              onClick={() => handleAddItem(item.item_id)}
+              disabled={createEntry.isPending}
+              className="w-full text-left px-2 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 disabled:opacity-40"
+            >
+              {item.brand ? `${item.name} (${item.brand})` : item.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {hasQuery && (
+        <button
+          onClick={handleAddPlaceholder}
+          disabled={createPlaceholder.isPending}
+          className="w-full text-left mt-1 px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
+        >
+          {results.length === 0
+            ? `No matches - add "${trimmed}" as a placeholder`
+            : `Not what you're looking for? Add "${trimmed}" as a placeholder`}
+        </button>
+      )}
+      {createEntry.isError && <div className="text-xs text-red-500 mt-1">{(createEntry.error as Error).message}</div>}
+      {createPlaceholder.isError && (
+        <div className="text-xs text-red-500 mt-1">{(createPlaceholder.error as Error).message}</div>
+      )}
+    </div>
+  );
+}
+
 function EntryCard({ entry, onDragStart, onDelete }: {
   entry: GroceryListEntry;
   onDragStart: (e: React.DragEvent, entry: GroceryListEntry) => void;
@@ -190,7 +256,6 @@ export function GroceryListPage() {
   const entriesQuery = useGroceryEntries();
   const tripsQuery = useTrips();
   const storesQuery = useGroceryStores();
-  const createPlaceholder = useCreatePlaceholderGroceryEntry();
   const updateEntry = useUpdateGroceryEntry();
   const deleteEntry = useDeleteGroceryEntry();
   const createTrip = useCreateTrip();
@@ -201,7 +266,6 @@ export function GroceryListPage() {
   const [newTripLabel, setNewTripLabel] = useState("");
   const [newTripStoreId, setNewTripStoreId] = useState<string>(ANY_STORE);
   const [dropError, setDropError] = useState<string | null>(null);
-  const [newPlaceholderName, setNewPlaceholderName] = useState("");
 
   if (entriesQuery.isLoading || tripsQuery.isLoading) {
     return <div className="p-8 text-center text-gray-400 dark:text-gray-500">Loading...</div>;
@@ -259,11 +323,6 @@ export function GroceryListPage() {
     );
   }
 
-  function handleAddPlaceholder() {
-    if (!newPlaceholderName.trim()) return;
-    createPlaceholder.mutate(newPlaceholderName.trim(), { onSuccess: () => setNewPlaceholderName("") });
-  }
-
   const cardClass = "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-3";
   const inputClass = "w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm mb-2";
 
@@ -299,22 +358,7 @@ export function GroceryListPage() {
             </div>
           ))}
 
-          <div className="flex gap-1 mt-2">
-            <input
-              value={newPlaceholderName}
-              onChange={(e) => setNewPlaceholderName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddPlaceholder()}
-              placeholder="No product yet? Add a name"
-              className="flex-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1 text-xs"
-            />
-            <button
-              onClick={handleAddPlaceholder}
-              disabled={createPlaceholder.isPending || !newPlaceholderName.trim()}
-              className="px-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40"
-            >
-              Add
-            </button>
-          </div>
+          <AddToPoolSearch />
         </div>
 
         {/* Trips */}

@@ -1,10 +1,27 @@
 import { useState } from "react";
-import type { Log } from "@/api/types";
+import type { Log, LoggedRecipeIngredient } from "@/api/types";
 import { useDeleteLog, useUpdateLog } from "@/api/hooks";
 import { logDisplayName, logQuantityLabel } from "@/lib/macros";
+import { parseDecimal } from "@/lib/format";
 import { MACRO_COLORS } from "@/lib/colors";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
+import { RecipeEditDialog } from "./RecipeEditDialog";
 import { ServingPicker } from "./ServingPicker";
+
+/** Scales a frozen ingredient's logged amount back up to the FULL
+ * batch, exactly as the recipe existed at the moment it was logged -
+ * not "your portion", not today's possibly-edited recipe (see design
+ * discussion: "when I'm cooking I usually just tap into the logged
+ * instance" - a fraction of a serving is useless there, and the LIVE
+ * recipe could have drifted since). Both grams_logged and
+ * recipe_servings_logged are frozen at log time already, so this is
+ * pure arithmetic on existing data - no new backend fields needed. */
+function fullBatchGrams(ingredient: LoggedRecipeIngredient, log: Log): number | null {
+  const loggedServings = parseDecimal(log.quantity);
+  const recipeServingsAtLogTime = log.recipe_servings_logged != null ? parseDecimal(log.recipe_servings_logged) : null;
+  if (!loggedServings || !recipeServingsAtLogTime) return null;
+  return (parseDecimal(ingredient.grams) / loggedServings) * recipeServingsAtLogTime;
+}
 
 interface ItemDetailModalProps {
   log: Log;
@@ -23,6 +40,7 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
   const deleteLog = useDeleteLog();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRecipeDialog, setShowRecipeDialog] = useState(false);
   const [quantityInput, setQuantityInput] = useState(log.quantity);
   const [servingSizeId, setServingSizeId] = useState<number | null>(log.serving_size_id);
 
@@ -88,6 +106,45 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
               </div>
             </div>
 
+            {isRecipeLog && (
+              <div className="mb-4">
+                <div className="flex items-baseline justify-between mb-1">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                    Full recipe, as made that day
+                  </span>
+                  {log.recipe_id != null && (
+                    <button
+                      onClick={() => setShowRecipeDialog(true)}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      View current recipe
+                    </button>
+                  )}
+                </div>
+                {!log.has_ingredient_snapshot ? (
+                  <div className="text-xs text-gray-400 dark:text-gray-500">
+                    This log predates ingredient tracking - only the current recipe is available.
+                  </div>
+                ) : log.ingredients.length === 0 ? (
+                  <div className="text-xs text-gray-400 dark:text-gray-500">No ingredients recorded for this log.</div>
+                ) : (
+                  <div className="space-y-1">
+                    {log.ingredients.map((ingredient, i) => {
+                      const grams = fullBatchGrams(ingredient, log);
+                      return (
+                        <div key={i} className="flex items-baseline justify-between text-sm">
+                          <span className="text-gray-700 dark:text-gray-200">{ingredient.item_name}</span>
+                          <span className="text-gray-400 dark:text-gray-500 text-xs">
+                            {grams != null ? `${Math.ceil(grams)}g` : "\u2014"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {!isRecipeLog && log.item_id != null && (
               <ServingPicker itemId={log.item_id} selectedServingSizeId={servingSizeId} onSelect={setServingSizeId} />
             )}
@@ -146,6 +203,10 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
           </div>
         </div>
       </div>
+
+      {showRecipeDialog && log.recipe_id != null && (
+        <RecipeEditDialog recipeId={log.recipe_id} stacked onClose={() => setShowRecipeDialog(false)} />
+      )}
     </>
   );
 }
