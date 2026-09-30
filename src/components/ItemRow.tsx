@@ -36,9 +36,14 @@ interface ItemRowProps {
    * pencil with nothing left to do that another entry point didn't
    * already cover. */
   onAddToGroceryList: (log: Log) => void;
+  /** Drag this log to another day/meal to move it there - see design
+   * discussion. Optional so ItemRow can still be used anywhere
+   * dragging wouldn't make sense without every caller needing to wire
+   * it up. */
+  onDragStart?: (log: Log) => void;
 }
 
-export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToGroceryList }: ItemRowProps) {
+export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToGroceryList, onDragStart }: ItemRowProps) {
   // Recipe logs have no single catalog item to add - hide the icon
   // entirely rather than trying to make it do something more
   // elaborate (add every ingredient? unclear what the user would even
@@ -50,9 +55,11 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
       <div
         role="button"
         tabIndex={0}
+        draggable={!!onDragStart}
+        onDragStart={onDragStart ? () => onDragStart(log) : undefined}
         onClick={() => onOpenDetail(log)}
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpenDetail(log)}
-        className="cursor-pointer rounded px-1 -mx-1 hover:bg-gray-50 dark:hover:bg-gray-700 pr-14 flex items-center gap-2"
+        className={`cursor-pointer rounded px-1 -mx-1 hover:bg-gray-50 dark:hover:bg-gray-700 pr-14 flex items-center gap-2 ${onDragStart ? "active:cursor-grabbing" : ""}`}
       >
         {log.image_path ? (
           <img src={`/${log.image_path}`} alt="" className="w-8 h-8 rounded object-cover shrink-0" />

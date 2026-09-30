@@ -14,6 +14,11 @@ interface MealSectionProps {
   onDelete: (log: Log) => void;
   onAddToGroceryList: (log: Log) => void;
   onAddItem: (date: string, mealType: MealType) => void;
+  onDragStart?: (log: Log) => void;
+  /** isCopy reflects whether Ctrl was held at drop time (see design
+   * discussion) - the event itself carries this (DragEvent extends
+   * MouseEvent), so no separate key-tracking state is needed. */
+  onDropLog?: (date: string, mealType: MealType, isCopy: boolean) => void;
 }
 
 export function MealSection({
@@ -27,6 +32,8 @@ export function MealSection({
   onDelete,
   onAddToGroceryList,
   onAddItem,
+  onDragStart,
+  onDropLog,
 }: MealSectionProps) {
   const totals = sumTotals(logs);
   const color = MEAL_COLORS[mealType];
@@ -48,9 +55,21 @@ export function MealSection({
           {goalKcal != null ? ` / ${goalKcal}` : ""} Cal
         </span>
       </button>
-      <div className="px-2 py-1 bg-white dark:bg-gray-800">
+      <div
+        className="px-2 py-1 bg-white dark:bg-gray-800"
+        onDragOver={onDropLog ? (e) => e.preventDefault() : undefined}
+        onDrop={onDropLog ? (e) => { e.preventDefault(); onDropLog(date, mealType, e.ctrlKey); } : undefined}
+      >
         {logs.map((log) => (
-          <ItemRow key={log.id} log={log} onOpenDetail={onOpenDetail} onQuantityClick={onQuantityClick} onDelete={onDelete} onAddToGroceryList={onAddToGroceryList} />
+          <ItemRow
+            key={log.id}
+            log={log}
+            onOpenDetail={onOpenDetail}
+            onQuantityClick={onQuantityClick}
+            onDelete={onDelete}
+            onAddToGroceryList={onAddToGroceryList}
+            onDragStart={onDragStart}
+          />
         ))}
         <button
           onClick={() => onAddItem(date, mealType)}

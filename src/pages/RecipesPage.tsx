@@ -13,11 +13,18 @@ const FILTER_LABELS: Record<FilterChip, string> = {
 
 export function RecipesPage() {
   const [filter, setFilter] = useState<FilterChip>("all");
+  const [query, setQuery] = useState("");
   const [editingRecipeId, setEditingRecipeId] = useState<number | null>(null);
   const [showDialog, setShowDialog] = useState(false);
 
   const recipesQuery = useRecipesListForEditor();
-  const rows = (recipesQuery.data ?? []).filter((r) => filter === "all" || filter === (r.recipe_type as RecipeType));
+  // Client-side, same reasoning as the item editor's own search - the
+  // whole list is already loaded for the type-filter chips, so this
+  // is one more in-memory pass, not a request per keystroke.
+  const normalizedQuery = query.trim().toLowerCase();
+  const rows = (recipesQuery.data ?? [])
+    .filter((r) => filter === "all" || filter === (r.recipe_type as RecipeType))
+    .filter((r) => normalizedQuery === "" || r.name.toLowerCase().includes(normalizedQuery));
 
   return (
     <div className="max-w-[1600px] mx-auto p-4">
@@ -33,6 +40,13 @@ export function RecipesPage() {
           + New recipe
         </button>
       </div>
+
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search recipes..."
+        className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2 text-sm mb-3"
+      />
 
       <div className="flex gap-1.5 mb-3">
         {(Object.keys(FILTER_LABELS) as FilterChip[]).map((chip) => (

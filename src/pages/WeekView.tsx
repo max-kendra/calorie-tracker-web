@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Log, MealType } from "@/api/types";
-import { useCreateGroceryEntry, useDeleteLog, useGoalsList, useLogsRange } from "@/api/hooks";
+import { useCreateGroceryEntry, useCreateLog, useDeleteLog, useGoalsList, useLogsRange } from "@/api/hooks";
 import { addDays, formatWeekRangeLabel, isoWeekNumber, startOfWeek, weekDates } from "@/lib/dates";
 import { resolveGoalForDate, sumGoalTargetsForWeek } from "@/lib/goals";
 import { groupByDateAndMeal, logDisplayName, sumTotals } from "@/lib/macros";
@@ -25,6 +25,7 @@ export function WeekView() {
   const [deletingLog, setDeletingLog] = useState<Log | null>(null);
   const [addingTo, setAddingTo] = useState<{ date: string; mealType: MealType } | null>(null);
   const [showWeekPicker, setShowWeekPicker] = useState(false);
+  const [draggedLog, setDraggedLog] = useState<Log | null>(null);
 
   const logsQuery = useLogsRange(startDate, endDate);
   // Full history, not just "the active one" - a week can span more
@@ -34,6 +35,38 @@ export function WeekView() {
   const goalsQuery = useGoalsList();
   const deleteLog = useDeleteLog();
   const createGroceryEntry = useCreateGroceryEntry();
+  const createLog = useCreateLog();
+
+  function handleDropLog(targetDate: string, targetMealType: MealType, isCopy: boolean) {
+    const log = draggedLog;
+    setDraggedLog(null);
+    if (!log) return;
+    // Dropping back where it started is a no-op, not a pointless
+    // recreate-and-delete (or a silent duplicate, for a copy).
+    if (log.date === targetDate && log.meal_type === targetMealType) return;
+
+    // "Move" is create-at-the-new-spot then delete-the-old (see design
+    // discussion) - LogUpdate deliberately doesn't support changing
+    // date/meal_type at all ("that's delete and re-log, not edit" -
+    // see its own docstring), so this respects that existing design
+    // rather than relaxing it. "Copy" is just the create half, leaving
+    // the original untouched.
+    createLog.mutate(
+      {
+        date: targetDate,
+        meal_type: targetMealType,
+        item_id: log.item_id ?? undefined,
+        recipe_id: log.recipe_id ?? undefined,
+        quantity: parseFloat(log.quantity),
+        serving_size_id: log.serving_size_id,
+      },
+      {
+        onSuccess: () => {
+          if (!isCopy) deleteLog.mutate(log.id);
+        },
+      },
+    );
+  }
 
   function handleAddToGroceryList(log: Log) {
     if (log.item_id == null) return;
@@ -122,6 +155,8 @@ export function WeekView() {
             onDelete={setDeletingLog}
             onAddToGroceryList={handleAddToGroceryList}
             onAddItem={(d, mealType) => setAddingTo({ date: d, mealType })}
+            onDragStart={setDraggedLog}
+            onDropLog={handleDropLog}
           />
         ))}
       </div>

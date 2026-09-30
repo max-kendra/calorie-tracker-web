@@ -15,6 +15,8 @@ interface DayColumnProps {
   onDelete: (log: Log) => void;
   onAddToGroceryList: (log: Log) => void;
   onAddItem: (date: string, mealType: MealType) => void;
+  onDragStart?: (log: Log) => void;
+  onDropLog?: (date: string, mealType: MealType, isCopy: boolean) => void;
 }
 
 export function DayColumn({
@@ -27,6 +29,8 @@ export function DayColumn({
   onDelete,
   onAddToGroceryList,
   onAddItem,
+  onDragStart,
+  onDropLog,
 }: DayColumnProps) {
   const allLogs = MEAL_TYPES.flatMap((meal) => logsByMeal[meal]);
   const dayTotals = sumTotals(allLogs);
@@ -77,6 +81,8 @@ export function DayColumn({
               onDelete={onDelete}
               onAddToGroceryList={onAddToGroceryList}
               onAddItem={onAddItem}
+              onDragStart={onDragStart}
+              onDropLog={onDropLog}
             />
           );
         })}

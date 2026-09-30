@@ -19,12 +19,25 @@ const FILTER_LABELS: Record<FilterChip, string> = {
  * well anyway. */
 export function ItemEditorPage() {
   const [filter, setFilter] = useState<FilterChip>("all");
+  const [query, setQuery] = useState("");
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [showItemDialog, setShowItemDialog] = useState(false);
 
   const itemsQuery = useItemsList();
 
-  const rows = (itemsQuery.data ?? []).filter((item) => filter === "all" || filter === (item.type as ItemType));
+  // Client-side, not a server search - the whole list is already
+  // loaded for the type-filter chips above, so this is just one more
+  // pass over data already in memory rather than a request per
+  // keystroke.
+  const normalizedQuery = query.trim().toLowerCase();
+  const rows = (itemsQuery.data ?? [])
+    .filter((item) => filter === "all" || filter === (item.type as ItemType))
+    .filter(
+      (item) =>
+        normalizedQuery === "" ||
+        item.name.toLowerCase().includes(normalizedQuery) ||
+        (item.brand ?? "").toLowerCase().includes(normalizedQuery),
+    );
 
   return (
     <div className="max-w-[1600px] mx-auto p-4">
@@ -40,6 +53,13 @@ export function ItemEditorPage() {
           + New item
         </button>
       </div>
+
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search items..."
+        className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2 text-sm mb-3"
+      />
 
       <div className="flex gap-1.5 mb-3">
         {(Object.keys(FILTER_LABELS) as FilterChip[]).map((chip) => (
