@@ -41,7 +41,14 @@ export function QuantityEditDialog({ log, onClose }: QuantityEditDialogProps) {
           <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-3 truncate">{logDisplayName(log)}</h2>
 
           {!isRecipeLog && log.item_id != null && (
-            <ServingPicker itemId={log.item_id} selectedServingSizeId={servingSizeId} onSelect={setServingSizeId} />
+            <ServingPicker
+              itemId={log.item_id}
+              selectedServingSizeId={servingSizeId}
+              onSelect={(id) => {
+                setServingSizeId(id);
+                if (id != null) setQuantityInput("1");
+              }}
+            />
           )}
 
           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">

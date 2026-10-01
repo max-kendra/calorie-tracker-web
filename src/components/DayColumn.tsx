@@ -16,6 +16,7 @@ interface DayColumnProps {
   onAddToGroceryList: (log: Log) => void;
   onAddItem: (date: string, mealType: MealType) => void;
   onDragStart?: (log: Log) => void;
+  onMealDragStart?: (date: string, mealType: MealType) => void;
   onDropLog?: (date: string, mealType: MealType, isCopy: boolean) => void;
 }
 
@@ -30,6 +31,7 @@ export function DayColumn({
   onAddToGroceryList,
   onAddItem,
   onDragStart,
+  onMealDragStart,
   onDropLog,
 }: DayColumnProps) {
   const allLogs = MEAL_TYPES.flatMap((meal) => logsByMeal[meal]);
@@ -64,6 +66,17 @@ export function DayColumn({
           <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
           <span style={{ color: MACRO_COLORS.fiber }}>{dayTotals.fiber_g}Fi</span>
         </div>
+        {kcalGoal != null && kcalGoal > 0 && (
+          <div className="h-1 rounded-full bg-gray-100 dark:bg-gray-700 mt-1.5 overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.min(100, (dayTotals.kcal / kcalGoal) * 100)}%`,
+                backgroundColor: MACRO_COLORS.kcal,
+              }}
+            />
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-b-xl flex-1">
         {MEAL_TYPES.map((mealType) => {
@@ -82,6 +95,7 @@ export function DayColumn({
               onAddToGroceryList={onAddToGroceryList}
               onAddItem={onAddItem}
               onDragStart={onDragStart}
+              onMealDragStart={onMealDragStart}
               onDropLog={onDropLog}
             />
           );

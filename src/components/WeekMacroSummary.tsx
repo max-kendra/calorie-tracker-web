@@ -21,10 +21,8 @@ export function WeekMacroSummary({ weekTotals, targetTotals }: WeekMacroSummaryP
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-4">
       <div className="flex items-baseline justify-between mb-1">
         <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">This week</h2>
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {weekTotals.kcal} / {kcalGoal} Cal
-        </span>
       </div>
+      <MacroBar label="Calories" eaten={weekTotals.kcal} goal={kcalGoal} color={MACRO_COLORS.kcal} unit=" Cal" />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 mt-3">
         <MacroBar label="Protein" eaten={weekTotals.protein_g} goal={proteinGoal} color={MACRO_COLORS.protein} />
         <MacroBar label="Fat" eaten={weekTotals.fat_g} goal={fatGoal} color={MACRO_COLORS.fat} />

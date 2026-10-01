@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RecipeIngredientDetail, RecipeStep, RecipeType } from "@/api/types";
 import { servingQuantityLabel } from "@/lib/macros";
+import { MACRO_COLORS } from "@/lib/colors";
 import {
   useAddRecipeIngredient,
   useAddRecipeStep,
@@ -492,6 +493,34 @@ export function RecipeEditDialog({ recipeId, onClose, stacked }: RecipeEditDialo
                   <IngredientRow key={ing.item_id} recipeId={effectiveRecipeId} ingredient={ing} />
                 ))}
                 <AddIngredientForm recipeId={effectiveRecipeId} />
+
+                {recipeDetailQuery.data && (
+                  <div className="pt-3">
+                    <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Macros</div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs mb-0.5">Whole recipe</div>
+                        <div className="text-gray-800 dark:text-gray-100">{recipeDetailQuery.data.totals.kcal} Cal</div>
+                        <div className="space-x-1.5 text-xs">
+                          <span style={{ color: MACRO_COLORS.protein }}>{recipeDetailQuery.data.totals.protein_g}P</span>
+                          <span style={{ color: MACRO_COLORS.fat }}>{recipeDetailQuery.data.totals.fat_g}F</span>
+                          <span style={{ color: MACRO_COLORS.carbs }}>{recipeDetailQuery.data.totals.carbs_g}C</span>
+                          <span style={{ color: MACRO_COLORS.fiber }}>{recipeDetailQuery.data.totals.fiber_g}Fi</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 dark:text-gray-500 text-xs mb-0.5">Per serving</div>
+                        <div className="text-gray-800 dark:text-gray-100">{recipeDetailQuery.data.totals_per_serving.kcal} Cal</div>
+                        <div className="space-x-1.5 text-xs">
+                          <span style={{ color: MACRO_COLORS.protein }}>{recipeDetailQuery.data.totals_per_serving.protein_g}P</span>
+                          <span style={{ color: MACRO_COLORS.fat }}>{recipeDetailQuery.data.totals_per_serving.fat_g}F</span>
+                          <span style={{ color: MACRO_COLORS.carbs }}>{recipeDetailQuery.data.totals_per_serving.carbs_g}C</span>
+                          <span style={{ color: MACRO_COLORS.fiber }}>{recipeDetailQuery.data.totals_per_serving.fiber_g}Fi</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2">Steps</div>
                 {(recipeDetailQuery.data?.steps ?? []).map((step) => (

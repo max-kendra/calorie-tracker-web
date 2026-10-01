@@ -65,7 +65,7 @@ export function ServingPicker({ itemId, selectedServingSizeId, onSelect }: Servi
         <option value={GRAMS_SENTINEL}>Grams (g)</option>
         {servingSizes.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.name}
+            {s.name} ({s.weight_g}g)
           </option>
         ))}
         <option value={NEW_SERVING_SENTINEL}>+ Create new serving...</option>

@@ -15,6 +15,9 @@ interface MealSectionProps {
   onAddToGroceryList: (log: Log) => void;
   onAddItem: (date: string, mealType: MealType) => void;
   onDragStart?: (log: Log) => void;
+  /** Drag the whole meal (header, not a row) to move/copy every log in
+   * it at once (see design discussion). */
+  onMealDragStart?: (date: string, mealType: MealType) => void;
   /** isCopy reflects whether Ctrl was held at drop time (see design
    * discussion) - the event itself carries this (DragEvent extends
    * MouseEvent), so no separate key-tracking state is needed. */
@@ -33,6 +36,7 @@ export function MealSection({
   onAddToGroceryList,
   onAddItem,
   onDragStart,
+  onMealDragStart,
   onDropLog,
 }: MealSectionProps) {
   const totals = sumTotals(logs);
@@ -42,6 +46,8 @@ export function MealSection({
     <div className="rounded-lg overflow-hidden">
       <button
         onClick={() => onMealClick(date, mealType)}
+        draggable={!!onMealDragStart && logs.length > 0}
+        onDragStart={onMealDragStart ? () => onMealDragStart(date, mealType) : undefined}
         className="w-full px-2 py-1.5 flex items-baseline justify-between hover:brightness-95 transition"
         style={{ backgroundColor: color }}
       >

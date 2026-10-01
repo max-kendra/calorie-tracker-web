@@ -140,7 +140,14 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
               </div>
 
               {selected.kind === "item" && (
-                <ServingPicker itemId={selected.id} selectedServingSizeId={servingSizeId} onSelect={setServingSizeId} />
+                <ServingPicker
+                  itemId={selected.id}
+                  selectedServingSizeId={servingSizeId}
+                  onSelect={(id) => {
+                    setServingSizeId(id);
+                    if (id != null) setQuantityInput("1");
+                  }}
+                />
               )}
 
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">

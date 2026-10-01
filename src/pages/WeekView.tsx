@@ -26,6 +26,17 @@ export function WeekView() {
   const [addingTo, setAddingTo] = useState<{ date: string; mealType: MealType } | null>(null);
   const [showWeekPicker, setShowWeekPicker] = useState(false);
   const [draggedLog, setDraggedLog] = useState<Log | null>(null);
+  const [draggedMeal, setDraggedMeal] = useState<{ date: string; mealType: MealType } | null>(null);
+
+  function handleLogDragStart(log: Log) {
+    setDraggedMeal(null);
+    setDraggedLog(log);
+  }
+
+  function handleMealDragStart(date: string, mealType: MealType) {
+    setDraggedLog(null);
+    setDraggedMeal({ date, mealType });
+  }
 
   const logsQuery = useLogsRange(startDate, endDate);
   // Full history, not just "the active one" - a week can span more
@@ -36,37 +47,6 @@ export function WeekView() {
   const deleteLog = useDeleteLog();
   const createGroceryEntry = useCreateGroceryEntry();
   const createLog = useCreateLog();
-
-  function handleDropLog(targetDate: string, targetMealType: MealType, isCopy: boolean) {
-    const log = draggedLog;
-    setDraggedLog(null);
-    if (!log) return;
-    // Dropping back where it started is a no-op, not a pointless
-    // recreate-and-delete (or a silent duplicate, for a copy).
-    if (log.date === targetDate && log.meal_type === targetMealType) return;
-
-    // "Move" is create-at-the-new-spot then delete-the-old (see design
-    // discussion) - LogUpdate deliberately doesn't support changing
-    // date/meal_type at all ("that's delete and re-log, not edit" -
-    // see its own docstring), so this respects that existing design
-    // rather than relaxing it. "Copy" is just the create half, leaving
-    // the original untouched.
-    createLog.mutate(
-      {
-        date: targetDate,
-        meal_type: targetMealType,
-        item_id: log.item_id ?? undefined,
-        recipe_id: log.recipe_id ?? undefined,
-        quantity: parseFloat(log.quantity),
-        serving_size_id: log.serving_size_id,
-      },
-      {
-        onSuccess: () => {
-          if (!isCopy) deleteLog.mutate(log.id);
-        },
-      },
-    );
-  }
 
   function handleAddToGroceryList(log: Log) {
     if (log.item_id == null) return;
@@ -88,6 +68,57 @@ export function WeekView() {
   }
 
   const logs = logsQuery.data ?? [];
+
+  /** "Move" is create-at-the-new-spot then delete-the-old (see design
+   * discussion) - LogUpdate deliberately doesn't support changing
+   * date/meal_type at all ("that's delete and re-log, not edit" - see
+   * its own docstring), so this respects that existing design rather
+   * than relaxing it. "Copy" is just the create half, leaving the
+   * original untouched. Handles both a single dragged log and a whole
+   * dragged meal (every log sharing its date+mealType) - whichever of
+   * draggedLog/draggedMeal is actually set. Dropping a single item
+   * back onto its own exact spot is a no-op UNLESS copying (see
+   * design discussion: "can we duplicate a logged item in the same
+   * meal on the same day" - a same-spot drop is precisely how that
+   * works, since there's nowhere else to indicate "right here,
+   * again"). Whole-meal drops don't have an equivalent same-spot
+   * duplicate case asked for, so that one stays guarded either way. */
+  function duplicateOrMoveLog(log: Log, targetDate: string, targetMealType: MealType, isCopy: boolean) {
+    createLog.mutate(
+      {
+        date: targetDate,
+        meal_type: targetMealType,
+        item_id: log.item_id ?? undefined,
+        recipe_id: log.recipe_id ?? undefined,
+        quantity: parseFloat(log.quantity),
+        serving_size_id: log.serving_size_id,
+      },
+      {
+        onSuccess: () => {
+          if (!isCopy) deleteLog.mutate(log.id);
+        },
+      },
+    );
+  }
+
+  function handleDropLog(targetDate: string, targetMealType: MealType, isCopy: boolean) {
+    const meal = draggedMeal;
+    const log = draggedLog;
+    setDraggedMeal(null);
+    setDraggedLog(null);
+
+    if (meal) {
+      if (meal.date === targetDate && meal.mealType === targetMealType) return;
+      const mealLogs = logs.filter((l) => l.date === meal.date && l.meal_type === meal.mealType);
+      mealLogs.forEach((l) => duplicateOrMoveLog(l, targetDate, targetMealType, isCopy));
+      return;
+    }
+
+    if (!log) return;
+    if (log.date === targetDate && log.meal_type === targetMealType && !isCopy) return;
+    duplicateOrMoveLog(log, targetDate, targetMealType, isCopy);
+  }
+
   const goals = goalsQuery.data ?? [];
   const grouped = groupByDateAndMeal(logs, dates);
   const weekTotals = sumTotals(logs);
@@ -155,7 +186,8 @@ export function WeekView() {
             onDelete={setDeletingLog}
             onAddToGroceryList={handleAddToGroceryList}
             onAddItem={(d, mealType) => setAddingTo({ date: d, mealType })}
-            onDragStart={setDraggedLog}
+            onDragStart={handleLogDragStart}
+            onMealDragStart={handleMealDragStart}
             onDropLog={handleDropLog}
           />
         ))}

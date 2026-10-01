@@ -146,7 +146,14 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
             )}
 
             {!isRecipeLog && log.item_id != null && (
-              <ServingPicker itemId={log.item_id} selectedServingSizeId={servingSizeId} onSelect={setServingSizeId} />
+              <ServingPicker
+                itemId={log.item_id}
+                selectedServingSizeId={servingSizeId}
+                onSelect={(id) => {
+                  setServingSizeId(id);
+                  if (id != null) setQuantityInput("1");
+                }}
+              />
             )}
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
               Quantity {isRecipeLog ? "(servings)" : servingSizeId == null ? "(g)" : ""}
