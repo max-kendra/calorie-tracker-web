@@ -199,6 +199,12 @@ export interface RecipeIngredientDetail {
   serving_size_name: string | null;
   serving_size_weight_g: string | null;
   quantity: string;
+  image_path: string | null;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
 }
 
 /** Full recipe shape - mirrors RecipeOut exactly. instructions and

@@ -15,6 +15,7 @@ import {
 } from "@/api/hooks";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { usePasteImage } from "@/lib/usePasteImage";
+import { cleanDecimalString } from "@/lib/format";
 
 interface ItemEditDialogProps {
   itemId: number | null;
@@ -94,14 +95,14 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
     setBarcode(item.barcode ?? "");
     setType(item.type);
     setImagePath(item.image_path);
-    setKcal100g(item.kcal_100g ?? "");
-    setProtein100g(item.protein_100g ?? "");
-    setCarbs100g(item.carbs_100g ?? "");
-    setFat100g(item.fat_100g ?? "");
-    setFiber100g(item.fiber_100g ?? "");
-    setSugar100g(item.sugar_100g ?? "");
-    setSaturatedFat100g(item.saturated_fat_100g ?? "");
-    setSodiumMg100g(item.sodium_mg_100g ?? "");
+    setKcal100g(cleanDecimalString(item.kcal_100g));
+    setProtein100g(cleanDecimalString(item.protein_100g));
+    setCarbs100g(cleanDecimalString(item.carbs_100g));
+    setFat100g(cleanDecimalString(item.fat_100g));
+    setFiber100g(cleanDecimalString(item.fiber_100g));
+    setSugar100g(cleanDecimalString(item.sugar_100g));
+    setSaturatedFat100g(cleanDecimalString(item.saturated_fat_100g));
+    setSodiumMg100g(cleanDecimalString(item.sodium_mg_100g));
     setCountsAsAddedSugar(item.counts_as_added_sugar ?? false);
     setSelectedStoreIds(new Set(item.grocery_stores.map((s) => s.id)));
   }, [itemDetailQuery.data]);

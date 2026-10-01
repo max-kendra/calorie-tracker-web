@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Log, LoggedRecipeIngredient } from "@/api/types";
 import { useDeleteLog, useUpdateLog } from "@/api/hooks";
 import { logDisplayName, logQuantityLabel } from "@/lib/macros";
-import { parseDecimal } from "@/lib/format";
+import { cleanDecimalString, parseDecimal } from "@/lib/format";
 import { MACRO_COLORS } from "@/lib/colors";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { RecipeEditDialog } from "./RecipeEditDialog";
@@ -41,11 +41,11 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRecipeDialog, setShowRecipeDialog] = useState(false);
-  const [quantityInput, setQuantityInput] = useState(log.quantity);
+  const [quantityInput, setQuantityInput] = useState(cleanDecimalString(log.quantity));
   const [servingSizeId, setServingSizeId] = useState<number | null>(log.serving_size_id);
 
   const imageUrl = log.image_path ? `/${log.image_path}` : null;
-  const quantityChanged = quantityInput !== log.quantity || servingSizeId !== log.serving_size_id;
+  const quantityChanged = quantityInput !== cleanDecimalString(log.quantity) || servingSizeId !== log.serving_size_id;
 
   function handleSaveQuantity() {
     const quantity = parseFloat(quantityInput);

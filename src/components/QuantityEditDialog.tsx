@@ -3,6 +3,7 @@ import type { Log } from "@/api/types";
 import { useUpdateLog } from "@/api/hooks";
 import { logDisplayName } from "@/lib/macros";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
+import { cleanDecimalString } from "@/lib/format";
 import { ServingPicker } from "./ServingPicker";
 
 interface QuantityEditDialogProps {
@@ -21,7 +22,7 @@ export function QuantityEditDialog({ log, onClose }: QuantityEditDialogProps) {
   const isRecipeLog = log.recipe_id != null;
   const updateLog = useUpdateLog();
 
-  const [quantityInput, setQuantityInput] = useState(log.quantity);
+  const [quantityInput, setQuantityInput] = useState(cleanDecimalString(log.quantity));
   const [servingSizeId, setServingSizeId] = useState<number | null>(log.serving_size_id);
 
   function handleSave() {

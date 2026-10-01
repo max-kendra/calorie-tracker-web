@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RecipeIngredientDetail, RecipeStep, RecipeType } from "@/api/types";
 import { servingQuantityLabel } from "@/lib/macros";
+import { cleanDecimalString } from "@/lib/format";
 import { MACRO_COLORS } from "@/lib/colors";
 import {
   useAddRecipeIngredient,
@@ -43,10 +44,10 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 function IngredientRow({ recipeId, ingredient }: { recipeId: number; ingredient: RecipeIngredientDetail }) {
   const updateIngredient = useUpdateRecipeIngredient();
   const deleteIngredient = useDeleteRecipeIngredient();
-  const [quantityInput, setQuantityInput] = useState(ingredient.quantity);
+  const [quantityInput, setQuantityInput] = useState(cleanDecimalString(ingredient.quantity));
   const [servingSizeId, setServingSizeId] = useState<number | null>(ingredient.serving_size_id);
 
-  const changed = quantityInput !== ingredient.quantity || servingSizeId !== ingredient.serving_size_id;
+  const changed = quantityInput !== cleanDecimalString(ingredient.quantity) || servingSizeId !== ingredient.serving_size_id;
 
   function handleSave() {
     const quantity = parseFloat(quantityInput);
@@ -56,20 +57,36 @@ function IngredientRow({ recipeId, ingredient }: { recipeId: number; ingredient:
 
   return (
     <div className="border border-gray-100 dark:border-gray-700 rounded-lg p-2 mb-2">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-sm text-gray-800 dark:text-gray-100">
-          {ingredient.item_name}
-          <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
-            {servingQuantityLabel(ingredient.quantity, ingredient.serving_size_name, ingredient.serving_size_weight_g)}
-          </span>
-        </span>
-        <button
-          onClick={() => deleteIngredient.mutate({ recipeId, itemId: ingredient.item_id })}
-          className="text-gray-400 dark:text-gray-500 hover:text-red-500 text-sm px-1"
-          aria-label="Remove ingredient"
-        >
-          &times;
-        </button>
+      <div className="flex items-start gap-2 mb-1">
+        {ingredient.image_path ? (
+          <img src={`/${ingredient.image_path}`} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+        ) : (
+          <div className="w-8 h-8 rounded bg-gray-100 dark:bg-gray-700 shrink-0" />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-800 dark:text-gray-100">
+              {ingredient.item_name}
+              <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
+                {servingQuantityLabel(ingredient.quantity, ingredient.serving_size_name, ingredient.serving_size_weight_g)}
+              </span>
+            </span>
+            <button
+              onClick={() => deleteIngredient.mutate({ recipeId, itemId: ingredient.item_id })}
+              className="text-gray-400 dark:text-gray-500 hover:text-red-500 text-sm px-1 shrink-0"
+              aria-label="Remove ingredient"
+            >
+              &times;
+            </button>
+          </div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 space-x-1.5">
+            <span>{ingredient.kcal} Cal</span>
+            <span style={{ color: MACRO_COLORS.protein }}>{ingredient.protein_g}P</span>
+            <span style={{ color: MACRO_COLORS.fat }}>{ingredient.fat_g}F</span>
+            <span style={{ color: MACRO_COLORS.carbs }}>{ingredient.carbs_g}C</span>
+            <span style={{ color: MACRO_COLORS.fiber }}>{ingredient.fiber_g}Fi</span>
+          </div>
+        </div>
       </div>
       <ServingPicker
         itemId={ingredient.item_id}
@@ -388,7 +405,7 @@ export function RecipeEditDialog({ recipeId, onClose, stacked }: RecipeEditDialo
     if (!r) return;
     setName(r.name);
     setRecipeType(r.recipe_type);
-    setServings(r.servings);
+    setServings(cleanDecimalString(r.servings));
     setSourceUrl(r.source_url ?? "");
     setImagePath(r.image_path);
   }, [recipeDetailQuery.data]);

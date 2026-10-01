@@ -497,11 +497,11 @@ export function useUpdateRecipeIngredient() {
       itemId: number;
       servingSizeId: number | null;
       quantity: number;
-    }) =>
-      api.patch<RecipeDetail>(`/recipes/${recipeId}/ingredients/${itemId}`, {
-        serving_size_id: servingSizeId,
-        quantity,
-      }),
+    }) => {
+      const params = new URLSearchParams({ quantity: String(quantity) });
+      if (servingSizeId != null) params.set("serving_size_id", String(servingSizeId));
+      return api.patch<RecipeDetail>(`/recipes/${recipeId}/ingredients/${itemId}?${params.toString()}`);
+    },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["recipe-detail", variables.recipeId] });
       queryClient.invalidateQueries({ queryKey: ["recipes-list-editor"] });
