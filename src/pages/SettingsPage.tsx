@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { usePasteImage } from "@/lib/usePasteImage";
 import type { ActivityLevel, GoalType, PrimaryHormone } from "@/api/types";
 import { useProfile, useUpdateProfile, useUploadItemPhoto, useWeightHistory } from "@/api/hooks";
 import { getFirstDayOfWeekOverride, setFirstDayOfWeekOverride } from "@/lib/locale";
@@ -74,14 +75,20 @@ export function SettingsPage() {
     });
   }
 
-  function handlePhotoFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  function uploadPhotoFile(file: File) {
     uploadPhoto.mutate(file, {
       onSuccess: (result) => setProfilePicPath(result.image_path),
     });
   }
+
+  function handlePhotoFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    uploadPhotoFile(file);
+  }
+
+  const handlePastePhoto = usePasteImage(uploadPhotoFile);
 
   function handleFirstDayChange(value: string) {
     setFirstDaySetting(value);
@@ -144,7 +151,7 @@ export function SettingsPage() {
 
         {/* Profile + Preferences */}
         <div>
-          <div className={cardClass}>
+          <div className={cardClass} onPaste={handlePastePhoto}>
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Profile</h2>
             {profileQuery.isLoading ? (
               <div className="text-sm text-gray-400 dark:text-gray-500">Loading...</div>
@@ -163,6 +170,7 @@ export function SettingsPage() {
                   >
                     {uploadPhoto.isPending ? "Uploading..." : profilePicPath ? "Change photo" : "Add photo"}
                   </button>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">or paste (Ctrl+V)</span>
                   <input ref={photoFileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFileSelected} />
                 </div>
                 {uploadPhoto.isError && <div className="text-xs text-red-500">{(uploadPhoto.error as Error).message}</div>}

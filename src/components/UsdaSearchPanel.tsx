@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { UsdaFood } from "@/api/types";
 import { useUsdaSearch, type UsdaSearchKind } from "@/api/hooks";
+import { MACRO_COLORS } from "@/lib/colors";
 
 interface UsdaSearchPanelProps {
   /** Pre-filled from whatever the person was already searching for
@@ -17,19 +18,36 @@ function formatGrams(value: string | null | undefined): string | null {
   return Number.isFinite(n) ? String(Number(n.toFixed(1))) : null;
 }
 
-function macroSummary(food: UsdaFood): string {
+function MacroSummary({ food }: { food: UsdaFood }) {
   const m = food.macros;
-  const parts: string[] = [];
-  if (m.kcal_100g != null && Number.isFinite(parseFloat(m.kcal_100g))) {
-    parts.push(`${Math.round(parseFloat(m.kcal_100g))} Cal`);
-  }
+  const kcal =
+    m.kcal_100g != null && Number.isFinite(parseFloat(m.kcal_100g)) ? Math.round(parseFloat(m.kcal_100g)) : null;
   const protein = formatGrams(m.protein_100g);
   const fat = formatGrams(m.fat_100g);
   const carbs = formatGrams(m.carbs_100g);
-  if (protein) parts.push(`${protein}P`);
-  if (fat) parts.push(`${fat}F`);
-  if (carbs) parts.push(`${carbs}C`);
-  return parts.length > 0 ? `${parts.join(" \u00b7 ")} per 100g` : "No macros reported";
+
+  if (kcal == null && !protein && !fat && !carbs) {
+    return <>No macros reported</>;
+  }
+
+  const dot = <span className="text-gray-300 dark:text-gray-600">{" \u00b7 "}</span>;
+  const parts: ReactNode[] = [];
+  if (kcal != null) parts.push(<span key="kcal">{kcal} Cal</span>);
+  if (protein) parts.push(<span key="protein" style={{ color: MACRO_COLORS.protein }}>{protein}P</span>);
+  if (fat) parts.push(<span key="fat" style={{ color: MACRO_COLORS.fat }}>{fat}F</span>);
+  if (carbs) parts.push(<span key="carbs" style={{ color: MACRO_COLORS.carbs }}>{carbs}C</span>);
+
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {i > 0 && dot}
+          {part}
+        </span>
+      ))}
+      {" per 100g"}
+    </>
+  );
 }
 
 /** Searches USDA FoodData Central on an explicit click only - never as
@@ -117,7 +135,7 @@ export function UsdaSearchPanel({ initialQuery, onPick, onBack }: UsdaSearchPane
             <div className="text-sm text-gray-800 dark:text-gray-100">{food.description}</div>
             <div className="text-xs text-gray-400 dark:text-gray-500">
               {food.brand_owner ? `${food.brand_owner} \u00b7 ` : ""}
-              {macroSummary(food)}
+              <MacroSummary food={food} />
             </div>
           </button>
         ))}

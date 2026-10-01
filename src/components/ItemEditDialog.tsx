@@ -14,6 +14,7 @@ import {
   useUploadItemPhoto,
 } from "@/api/hooks";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
+import { usePasteImage } from "@/lib/usePasteImage";
 
 interface ItemEditDialogProps {
   itemId: number | null;
@@ -167,14 +168,20 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
     deleteServingSize.mutate({ itemId: effectiveItemId, servingId });
   }
 
-  function handlePhotoFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  function uploadPhotoFile(file: File) {
     uploadPhoto.mutate(file, {
       onSuccess: (result) => setImagePath(result.image_path),
     });
   }
+
+  function handlePhotoFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    uploadPhotoFile(file);
+  }
+
+  const handlePastePhoto = usePasteImage(uploadPhotoFile);
 
   function handleBarcodeFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -230,7 +237,10 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
     <>
       <div className={`fixed inset-0 bg-black/30 ${stacked ? "z-[60]" : "z-40"}`} onClick={onClose} />
       <div className={`fixed inset-0 ${stacked ? "z-[70]" : "z-50"} flex items-start justify-center pt-10 p-4 pointer-events-none`}>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh] pointer-events-auto">
+        <div
+          onPaste={handlePastePhoto}
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh] pointer-events-auto"
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
               {isCreating && createdItemId == null ? "New item" : "Edit item"}
@@ -260,6 +270,7 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
               >
                 {uploadPhoto.isPending ? "Uploading..." : imagePath ? "Change photo" : "Add photo"}
               </button>
+              <span className="text-xs text-gray-400 dark:text-gray-500">or paste (Ctrl+V)</span>
               <input ref={photoFileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFileSelected} />
             </div>
             {uploadPhoto.isError && <div className="text-xs text-red-500">{(uploadPhoto.error as Error).message}</div>}

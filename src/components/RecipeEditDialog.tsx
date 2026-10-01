@@ -18,6 +18,7 @@ import {
 } from "@/api/hooks";
 import { usdaFoodToPrefill, type ItemFormPrefill } from "@/lib/itemPrefill";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
+import { usePasteImage } from "@/lib/usePasteImage";
 import { ItemEditDialog } from "./ItemEditDialog";
 import { ServingPicker } from "./ServingPicker";
 import { UsdaSearchPanel } from "./UsdaSearchPanel";
@@ -70,7 +71,14 @@ function IngredientRow({ recipeId, ingredient }: { recipeId: number; ingredient:
           &times;
         </button>
       </div>
-      <ServingPicker itemId={ingredient.item_id} selectedServingSizeId={servingSizeId} onSelect={setServingSizeId} />
+      <ServingPicker
+        itemId={ingredient.item_id}
+        selectedServingSizeId={servingSizeId}
+        onSelect={(id) => {
+          setServingSizeId(id);
+          if (id != null) setQuantityInput("1");
+        }}
+      />
       <div className="flex gap-2 mt-1">
         <input
           type="number"
@@ -136,7 +144,14 @@ function AddIngredientForm({ recipeId }: { recipeId: number }) {
             &larr; Back
           </button>
         </div>
-        <ServingPicker itemId={selected.id} selectedServingSizeId={servingSizeId} onSelect={setServingSizeId} />
+        <ServingPicker
+          itemId={selected.id}
+          selectedServingSizeId={servingSizeId}
+          onSelect={(id) => {
+            setServingSizeId(id);
+            if (id != null) setQuantityInput("1");
+          }}
+        />
         <div className="flex gap-2 mt-1">
           <input
             type="number"
@@ -389,14 +404,20 @@ export function RecipeEditDialog({ recipeId, onClose, stacked }: RecipeEditDialo
     };
   }
 
-  function handlePhotoFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  function uploadPhotoFile(file: File) {
     uploadPhoto.mutate(file, {
       onSuccess: (result) => setImagePath(result.image_path),
     });
   }
+
+  function handlePhotoFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    uploadPhotoFile(file);
+  }
+
+  const handlePastePhoto = usePasteImage(uploadPhotoFile);
 
   function handleSave() {
     if (!name.trim()) return;
@@ -425,7 +446,10 @@ export function RecipeEditDialog({ recipeId, onClose, stacked }: RecipeEditDialo
     <>
       <div className={`fixed inset-0 bg-black/30 ${stacked ? "z-[60]" : "z-40"}`} onClick={onClose} />
       <div className={`fixed inset-0 ${stacked ? "z-[70]" : "z-50"} flex items-start justify-center pt-10 p-4 pointer-events-none`}>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh] pointer-events-auto">
+        <div
+          onPaste={handlePastePhoto}
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh] pointer-events-auto"
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
               {isCreating && createdRecipeId == null ? "New recipe" : "Edit recipe"}
@@ -449,6 +473,7 @@ export function RecipeEditDialog({ recipeId, onClose, stacked }: RecipeEditDialo
               >
                 {uploadPhoto.isPending ? "Uploading..." : imagePath ? "Change photo" : "Add photo"}
               </button>
+              <span className="text-xs text-gray-400 dark:text-gray-500">or paste (Ctrl+V)</span>
               <input ref={photoFileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFileSelected} />
             </div>
             {uploadPhoto.isError && <div className="text-xs text-red-500">{(uploadPhoto.error as Error).message}</div>}
