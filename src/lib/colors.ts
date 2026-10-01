@@ -15,7 +15,7 @@ export const MACRO_COLORS = {
   // Deliberately a neutral gray, not another vivid color - calories are
   // the aggregate of the four macros above, not a fifth one alongside
   // them, and a neutral tone reads that way at a glance.
-  kcal: "#6B7280",
+  kcal: "#2C6E63",
 } as const;
 
 export function darkenColor(hex: string, factor = 0.35): string {
