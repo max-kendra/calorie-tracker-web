@@ -169,7 +169,13 @@ export function useCreateServingSize() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ itemId, name, weightG }: { itemId: number; name: string; weightG: number }) =>
-      api.post<ServingSize>(`/items/${itemId}/serving-sizes`, { name, weight_g: weightG }),
+      api
+        .post<ItemDetail>(`/items/${itemId}/serving-sizes?${new URLSearchParams({ name, weight_g: String(weightG) })}`)
+        .then((item) => {
+          const created = item.serving_sizes.filter((ss) => ss.name === name).sort((a, b) => b.id - a.id)[0];
+          if (!created) throw new Error("Serving size was not returned");
+          return created as ServingSize;
+        }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["item-detail", variables.itemId] });
     },
