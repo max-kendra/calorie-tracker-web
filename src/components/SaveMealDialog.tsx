@@ -3,14 +3,13 @@ import { useEscapeToClose } from "@/lib/useEscapeToClose";
 
 interface SaveMealDialogProps {
   defaultName: string;
-  skippedCount: number;
   isPending: boolean;
   error: string | null;
   onSave: (name: string) => void;
   onCancel: () => void;
 }
 
-export function SaveMealDialog({ defaultName, skippedCount, isPending, error, onSave, onCancel }: SaveMealDialogProps) {
+export function SaveMealDialog({ defaultName, isPending, error, onSave, onCancel }: SaveMealDialogProps) {
   useEscapeToClose(onCancel);
   const [name, setName] = useState(defaultName);
   const trimmed = name.trim();
@@ -37,11 +36,6 @@ export function SaveMealDialog({ defaultName, skippedCount, isPending, error, on
             placeholder="Meal name"
             className="w-full text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 px-3 py-2 mb-3"
           />
-          {skippedCount > 0 && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              {skippedCount} logged recipe{skippedCount === 1 ? "" : "s"} can't be included in a saved meal and will be skipped.
-            </p>
-          )}
           {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
           <div className="flex gap-2">
             <button

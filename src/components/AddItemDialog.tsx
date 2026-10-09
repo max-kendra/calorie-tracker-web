@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Item, ItemType, MealType, Recipe, RecipeType } from "@/api/types";
-import { useCreateLog, useItemSearch, useRecipeSearch } from "@/api/hooks";
+import { useCreateLog, useItemSearch, useLogFromMeal, useRecipeSearch } from "@/api/hooks";
 import { parseDecimal } from "@/lib/format";
 import { usdaFoodToPrefill, type ItemFormPrefill } from "@/lib/itemPrefill";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
@@ -30,6 +30,7 @@ interface ResultRow {
   name: string;
   kcalLabel: string;
   kind: "item" | "recipe";
+  isMeal?: boolean;
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -53,7 +54,7 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
   useEscapeToClose(onClose);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterChip>("all");
-  const [selected, setSelected] = useState<{ kind: "item" | "recipe"; id: number; name: string } | null>(null);
+  const [selected, setSelected] = useState<{ kind: "item" | "recipe"; id: number; name: string; isMeal?: boolean } | null>(null);
   const [quantityInput, setQuantityInput] = useState("100");
   const [servingSizeId, setServingSizeId] = useState<number | null>(null);
   // USDA fallback (see design discussion: nothing matched among your own
@@ -71,6 +72,7 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
   const itemsQuery = useItemSearch(debouncedQuery);
   const recipesQuery = useRecipeSearch(debouncedQuery);
   const createLog = useCreateLog();
+  const logFromMeal = useLogFromMeal();
 
   const includeItems = filter === "all" || filter === "product" || filter === "ingredient";
   const includeRecipes = filter === "all" || filter === "recipe" || filter === "meal";
@@ -94,8 +96,9 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
           key: `recipe-${recipe.recipe_id}`,
           id: recipe.recipe_id,
           name: recipe.name,
-          kcalLabel: recipe.kcal_per_serving != null ? `${recipe.kcal_per_serving} Cal/serving` : "",
+          kcalLabel: `${recipe.totals_per_serving.kcal} Cal/serving`,
           kind: "recipe" as const,
+          isMeal: recipe.recipe_type === "meal",
         }))
     : [];
 
@@ -103,13 +106,17 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
   const isSearching = itemsQuery.isFetching || recipesQuery.isFetching;
 
   function handleSelectResult(row: ResultRow) {
-    setSelected({ kind: row.kind, id: row.id, name: row.name });
+    setSelected({ kind: row.kind, id: row.id, name: row.name, isMeal: row.isMeal });
     setQuantityInput(row.kind === "item" ? "100" : "1");
     setServingSizeId(null);
   }
 
   function handleConfirmAdd() {
     if (!selected) return;
+    if (selected.isMeal) {
+      logFromMeal.mutate({ recipe_id: selected.id, date, meal_type: mealType }, { onSuccess: onClose });
+      return;
+    }
     const quantity = parseFloat(quantityInput);
     if (!Number.isFinite(quantity) || quantity <= 0) return;
     createLog.mutate(
@@ -147,28 +154,38 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
                 />
               )}
 
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                Quantity {selected.kind === "item" ? (servingSizeId == null ? "(g)" : "") : "(servings)"}
-              </label>
-              <input
-                type="number"
-                step="any"
-                min="0"
-                value={quantityInput}
-                onChange={(e) => setQuantityInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleConfirmAdd()}
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm mb-2"
-                autoFocus
-              />
-              {createLog.isError && (
-                <div className="text-xs text-red-500 mb-2">{(createLog.error as Error).message}</div>
+              {selected.isMeal ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  Adds everything in this meal as separate entries you can edit individually.
+                </p>
+              ) : (
+                <>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    Quantity {selected.kind === "item" ? (servingSizeId == null ? "(g)" : "") : "(servings)"}
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={quantityInput}
+                    onChange={(e) => setQuantityInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleConfirmAdd()}
+                    className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm mb-2"
+                    autoFocus
+                  />
+                </>
+              )}
+              {(createLog.isError || logFromMeal.isError) && (
+                <div className="text-xs text-red-500 mb-2">
+                  {((createLog.error ?? logFromMeal.error) as Error).message}
+                </div>
               )}
               <button
                 onClick={handleConfirmAdd}
-                disabled={createLog.isPending}
+                disabled={createLog.isPending || logFromMeal.isPending}
                 className="w-full bg-blue-500 text-white rounded-lg py-2 text-sm font-medium mt-1 disabled:opacity-40 hover:bg-blue-600"
               >
-                {createLog.isPending ? "Adding..." : "Add"}
+                {createLog.isPending || logFromMeal.isPending ? "Adding..." : "Add"}
               </button>
             </div>
           ) : (

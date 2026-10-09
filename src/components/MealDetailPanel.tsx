@@ -41,7 +41,7 @@ export function MealDetailPanel({
   const [savingMeal, setSavingMeal] = useState(false);
   const [saved, setSaved] = useState(false);
   const saveMeal = useSaveMeal();
-  const savable = logs.filter((l) => l.item_id != null);
+  const savable = logs.filter((l) => l.item_id != null || l.recipe_id != null);
 
   return (
     <>
@@ -115,19 +115,24 @@ export function MealDetailPanel({
       {savingMeal && (
         <SaveMealDialog
           defaultName=""
-          skippedCount={logs.length - savable.length}
+          
           isPending={saveMeal.isPending}
-          error={saveMeal.isError ? "Failed to save meal" : null}
+          error={saveMeal.isError ? (saveMeal.error as Error).message : null}
           onCancel={() => setSavingMeal(false)}
           onSave={(name) =>
             saveMeal.mutate(
               {
                 name,
-                ingredients: savable.map((l) => ({
-                  item_id: l.item_id as number,
-                  serving_size_id: l.serving_size_id,
-                  quantity: Number(l.quantity),
-                })),
+                ingredients: savable
+                  .filter((l) => l.item_id != null)
+                  .map((l) => ({
+                    item_id: l.item_id as number,
+                    serving_size_id: l.serving_size_id,
+                    quantity: Number(l.quantity),
+                  })),
+                components: savable
+                  .filter((l) => l.recipe_id != null)
+                  .map((l) => ({ component_recipe_id: l.recipe_id as number, quantity: Number(l.quantity) })),
               },
               {
                 onSuccess: () => {

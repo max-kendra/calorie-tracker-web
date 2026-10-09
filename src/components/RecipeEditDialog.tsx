@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { RecipeIngredientDetail, RecipeStep, RecipeType } from "@/api/types";
+import type { RecipeComponentDetail, RecipeIngredientDetail, RecipeStep, RecipeType } from "@/api/types";
 import { servingQuantityLabel } from "@/lib/macros";
 import { cleanDecimalString } from "@/lib/format";
 import { MACRO_COLORS } from "@/lib/colors";
@@ -8,7 +8,9 @@ import {
   useAddRecipeStep,
   useCreateRecipe,
   useDeleteRecipe,
+  useDeleteRecipeComponent,
   useDeleteRecipeIngredient,
+  useUpdateRecipeComponent,
   useDeleteRecipeStep,
   useItemSearch,
   useRecipeDetail,
@@ -39,6 +41,77 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
     return () => clearTimeout(timer);
   }, [value, delayMs]);
   return debounced;
+}
+
+function ComponentRow({ recipeId, component }: { recipeId: number; component: RecipeComponentDetail }) {
+  const updateComponent = useUpdateRecipeComponent();
+  const deleteComponent = useDeleteRecipeComponent();
+  const [quantityInput, setQuantityInput] = useState(cleanDecimalString(component.quantity));
+  const changed = quantityInput !== cleanDecimalString(component.quantity);
+
+  function handleSave() {
+    const quantity = parseFloat(quantityInput);
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    updateComponent.mutate({ recipeId, componentRecipeId: component.component_recipe_id, quantity });
+  }
+
+  return (
+    <div className="border border-gray-100 dark:border-gray-700 rounded-lg p-2 mb-2">
+      <div className="flex items-start gap-2 mb-1">
+        {component.image_path ? (
+          <img src={`/${component.image_path}`} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+        ) : (
+          <div className="w-8 h-8 rounded bg-gray-100 dark:bg-gray-700 shrink-0" />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-800 dark:text-gray-100">
+              {component.recipe_name}
+              <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">
+                {cleanDecimalString(component.quantity)} serving{parseFloat(component.quantity) === 1 ? "" : "s"}
+              </span>
+            </span>
+            <button
+              onClick={() => deleteComponent.mutate({ recipeId, componentRecipeId: component.component_recipe_id })}
+              className="text-gray-400 dark:text-gray-500 hover:text-red-500 text-sm px-1 shrink-0"
+              aria-label="Remove recipe"
+            >
+              &times;
+            </button>
+          </div>
+          <div className="text-xs text-gray-400 dark:text-gray-500 space-x-1.5">
+            <span>{component.kcal} Cal</span>
+            <span style={{ color: MACRO_COLORS.protein }}>{component.protein_g}P</span>
+            <span style={{ color: MACRO_COLORS.fat }}>{component.fat_g}F</span>
+            <span style={{ color: MACRO_COLORS.carbs }}>{component.carbs_g}C</span>
+            <span style={{ color: MACRO_COLORS.fiber }}>{component.fiber_g}Fi</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2 mt-1">
+        <input
+          type="number"
+          step="any"
+          min="0"
+          value={quantityInput}
+          onChange={(e) => setQuantityInput(e.target.value)}
+          className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 text-sm"
+        />
+        <button
+          onClick={handleSave}
+          disabled={!changed || updateComponent.isPending}
+          className="px-3 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm disabled:opacity-40 hover:bg-gray-200 dark:hover:bg-gray-600"
+        >
+          {updateComponent.isPending ? "..." : "Save"}
+        </button>
+      </div>
+      {(updateComponent.isError || deleteComponent.isError) && (
+        <div className="text-xs text-red-500 mt-1">
+          {((updateComponent.error ?? deleteComponent.error) as Error).message}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function IngredientRow({ recipeId, ingredient }: { recipeId: number; ingredient: RecipeIngredientDetail }) {
@@ -528,9 +601,28 @@ export function RecipeEditDialog({ recipeId, onClose, stacked }: RecipeEditDialo
                 {(recipeDetailQuery.data?.ingredients ?? []).map((ing) => (
                   <IngredientRow key={ing.item_id} recipeId={effectiveRecipeId} ingredient={ing} />
                 ))}
+                {(recipeDetailQuery.data?.components ?? []).length > 0 && (
+                  <>
+                    <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2">Recipes</div>
+                    {(recipeDetailQuery.data?.components ?? []).map((comp) => (
+                      <ComponentRow key={comp.component_recipe_id} recipeId={effectiveRecipeId} component={comp} />
+                    ))}
+                  </>
+                )}
                 <AddIngredientForm recipeId={effectiveRecipeId} />
 
-                {recipeDetailQuery.data && (
+                {recipeDetailQuery.data && (() => {
+                  const whole = recipeDetailQuery.data.totals;
+                  const servingsNum = parseFloat(servings);
+                  const divisor = Number.isFinite(servingsNum) && servingsNum > 0 ? servingsNum : 1;
+                  const perServing = {
+                    kcal: Math.ceil(whole.kcal / divisor),
+                    protein_g: Math.ceil(whole.protein_g / divisor),
+                    fat_g: Math.ceil(whole.fat_g / divisor),
+                    carbs_g: Math.ceil(whole.carbs_g / divisor),
+                    fiber_g: Math.ceil(whole.fiber_g / divisor),
+                  };
+                  return (
                   <div className="pt-3">
                     <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">Macros</div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
@@ -546,17 +638,18 @@ export function RecipeEditDialog({ recipeId, onClose, stacked }: RecipeEditDialo
                       </div>
                       <div>
                         <div className="text-gray-400 dark:text-gray-500 text-xs mb-0.5">Per serving</div>
-                        <div className="text-gray-800 dark:text-gray-100">{recipeDetailQuery.data.totals_per_serving.kcal} Cal</div>
+                        <div className="text-gray-800 dark:text-gray-100">{perServing.kcal} Cal</div>
                         <div className="space-x-1.5 text-xs">
-                          <span style={{ color: MACRO_COLORS.protein }}>{recipeDetailQuery.data.totals_per_serving.protein_g}P</span>
-                          <span style={{ color: MACRO_COLORS.fat }}>{recipeDetailQuery.data.totals_per_serving.fat_g}F</span>
-                          <span style={{ color: MACRO_COLORS.carbs }}>{recipeDetailQuery.data.totals_per_serving.carbs_g}C</span>
-                          <span style={{ color: MACRO_COLORS.fiber }}>{recipeDetailQuery.data.totals_per_serving.fiber_g}Fi</span>
+                          <span style={{ color: MACRO_COLORS.protein }}>{perServing.protein_g}P</span>
+                          <span style={{ color: MACRO_COLORS.fat }}>{perServing.fat_g}F</span>
+                          <span style={{ color: MACRO_COLORS.carbs }}>{perServing.carbs_g}C</span>
+                          <span style={{ color: MACRO_COLORS.fiber }}>{perServing.fiber_g}Fi</span>
                         </div>
                       </div>
                     </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2">Steps</div>
                 {(recipeDetailQuery.data?.steps ?? []).map((step) => (

@@ -436,13 +436,35 @@ export function useCreateRecipe() {
   });
 }
 
+/** Expands a saved meal into per-ingredient logs (and one log per
+ * recipe inside it) - see the backend's POST /logs/from-meal. */
+export function useLogFromMeal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { recipe_id: number; date: string; meal_type: MealType }) =>
+      api.post<Log[]>("/logs/from-meal", payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
+      queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
+    },
+  });
+}
+
 export function useSaveMeal() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: {
       name: string;
       ingredients: { item_id: number; serving_size_id: number | null; quantity: number }[];
-    }) => api.post<RecipeDetail>("/recipes", { name: payload.name, recipe_type: "meal", servings: 1, ingredients: payload.ingredients }),
+      components: { component_recipe_id: number; quantity: number }[];
+    }) =>
+      api.post<RecipeDetail>("/recipes", {
+        name: payload.name,
+        recipe_type: "meal",
+        servings: 1,
+        ingredients: payload.ingredients,
+        components: payload.components,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recipes-list-editor"] });
       queryClient.invalidateQueries({ queryKey: ["recipe-search"] });
@@ -516,6 +538,30 @@ export function useUpdateRecipeIngredient() {
       if (servingSizeId != null) params.set("serving_size_id", String(servingSizeId));
       return api.patch<RecipeDetail>(`/recipes/${recipeId}/ingredients/${itemId}?${params.toString()}`);
     },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["recipe-detail", variables.recipeId] });
+      queryClient.invalidateQueries({ queryKey: ["recipes-list-editor"] });
+    },
+  });
+}
+
+export function useUpdateRecipeComponent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ recipeId, componentRecipeId, quantity }: { recipeId: number; componentRecipeId: number; quantity: number }) =>
+      api.patch<RecipeDetail>(`/recipes/${recipeId}/components/${componentRecipeId}?quantity=${quantity}`),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["recipe-detail", variables.recipeId] });
+      queryClient.invalidateQueries({ queryKey: ["recipes-list-editor"] });
+    },
+  });
+}
+
+export function useDeleteRecipeComponent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ recipeId, componentRecipeId }: { recipeId: number; componentRecipeId: number }) =>
+      api.delete<void>(`/recipes/${recipeId}/components/${componentRecipeId}`),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["recipe-detail", variables.recipeId] });
       queryClient.invalidateQueries({ queryKey: ["recipes-list-editor"] });

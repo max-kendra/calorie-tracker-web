@@ -188,7 +188,7 @@ export interface Recipe {
   name: string;
   recipe_type: RecipeType;
   image_path: string | null;
-  kcal_per_serving: number | null;
+  totals_per_serving: NutritionTotals;
 }
 
 /** Mirrors RecipeIngredientOut on the backend. */
@@ -218,6 +218,19 @@ export interface RecipeStep {
   timer_seconds: number | null;
 }
 
+/** Mirrors RecipeComponentOut - a whole recipe used inside a saved meal. */
+export interface RecipeComponentDetail {
+  component_recipe_id: number;
+  quantity: string;
+  recipe_name: string;
+  image_path: string | null;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+}
+
 export interface RecipeDetail {
   recipe_id: number;
   name: string;
@@ -226,6 +239,7 @@ export interface RecipeDetail {
   image_path: string | null;
   servings: string;
   ingredients: RecipeIngredientDetail[];
+  components: RecipeComponentDetail[];
   steps: RecipeStep[];
   totals: ExtendedNutritionTotals;
   totals_per_serving: ExtendedNutritionTotals;

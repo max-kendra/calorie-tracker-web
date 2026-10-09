@@ -83,7 +83,7 @@ export function RecipesPage() {
               >
                 <td className="px-4 py-2 text-gray-800 dark:text-gray-100">{recipe.name}</td>
                 <td className="px-4 py-2 text-gray-500 dark:text-gray-400 capitalize">{recipe.recipe_type}</td>
-                <td className="px-4 py-2 text-gray-500 dark:text-gray-400">{recipe.kcal_per_serving ?? "-"}</td>
+                <td className="px-4 py-2 text-gray-500 dark:text-gray-400">{recipe.totals_per_serving.kcal}</td>
               </tr>
             ))}
           </tbody>
