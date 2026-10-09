@@ -91,10 +91,7 @@ function IngredientRow({ recipeId, ingredient }: { recipeId: number; ingredient:
       <ServingPicker
         itemId={ingredient.item_id}
         selectedServingSizeId={servingSizeId}
-        onSelect={(id) => {
-          setServingSizeId(id);
-          if (id != null) setQuantityInput("1");
-        }}
+        onSelect={(id, convertQuantity) => { setServingSizeId(id); setQuantityInput(convertQuantity); }}
       />
       <div className="flex gap-2 mt-1">
         <input
@@ -164,10 +161,7 @@ function AddIngredientForm({ recipeId }: { recipeId: number }) {
         <ServingPicker
           itemId={selected.id}
           selectedServingSizeId={servingSizeId}
-          onSelect={(id) => {
-            setServingSizeId(id);
-            if (id != null) setQuantityInput("1");
-          }}
+          onSelect={(id, convertQuantity) => { setServingSizeId(id); setQuantityInput(convertQuantity); }}
         />
         <div className="flex gap-2 mt-1">
           <input

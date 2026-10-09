@@ -45,10 +45,7 @@ export function QuantityEditDialog({ log, onClose }: QuantityEditDialogProps) {
             <ServingPicker
               itemId={log.item_id}
               selectedServingSizeId={servingSizeId}
-              onSelect={(id) => {
-                setServingSizeId(id);
-                if (id != null) setQuantityInput("1");
-              }}
+              onSelect={(id, convertQuantity) => { setServingSizeId(id); setQuantityInput(convertQuantity); }}
             />
           )}
 

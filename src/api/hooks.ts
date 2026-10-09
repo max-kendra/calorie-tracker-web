@@ -436,6 +436,20 @@ export function useCreateRecipe() {
   });
 }
 
+export function useSaveMeal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      name: string;
+      ingredients: { item_id: number; serving_size_id: number | null; quantity: number }[];
+    }) => api.post<RecipeDetail>("/recipes", { name: payload.name, recipe_type: "meal", servings: 1, ingredients: payload.ingredients }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recipes-list-editor"] });
+      queryClient.invalidateQueries({ queryKey: ["recipe-search"] });
+    },
+  });
+}
+
 export function useUpdateRecipe() {
   const queryClient = useQueryClient();
   return useMutation({

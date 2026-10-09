@@ -143,10 +143,7 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
                 <ServingPicker
                   itemId={selected.id}
                   selectedServingSizeId={servingSizeId}
-                  onSelect={(id) => {
-                    setServingSizeId(id);
-                    if (id != null) setQuantityInput("1");
-                  }}
+                  onSelect={(id, convertQuantity) => { setServingSizeId(id); setQuantityInput(convertQuantity); }}
                 />
               )}
 

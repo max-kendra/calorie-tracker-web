@@ -1,11 +1,22 @@
 import { useState } from "react";
 import { useCreateServingSize, useItemDetail } from "@/api/hooks";
+import { cleanDecimalString, parseDecimal } from "@/lib/format";
+
+/** Takes the quantity currently in the caller's input and returns what
+ * it should become after the serving change. */
+export type QuantityConverter = (currentQuantity: string) => string;
 
 interface ServingPickerProps {
   itemId: number;
   /** null = plain grams. */
   selectedServingSizeId: number | null;
-  onSelect: (servingSizeId: number | null) => void;
+  /** convertQuantity is meant to be handed straight to the caller's
+   * quantity setter (setQuantityInput(convertQuantity)): switching into
+   * a custom serving resets to 1, and switching back to grams
+   * multiplies the quantity by the serving it was just on (2 slices of
+   * a 30g serving becomes 60), so the amount carries over instead of
+   * going back to whatever number was typed before. */
+  onSelect: (servingSizeId: number | null, convertQuantity: QuantityConverter) => void;
 }
 
 const GRAMS_SENTINEL = "grams";
@@ -35,20 +46,35 @@ export function ServingPicker({ itemId, selectedServingSizeId, onSelect }: Servi
       ? String(selectedServingSizeId)
       : GRAMS_SENTINEL;
 
+  function converterFor(newServingSizeId: number | null): QuantityConverter {
+    if (newServingSizeId != null) return () => "1";
+    // Read now, while selectedServingSizeId is still the serving being
+    // left - the parent hasn't re-rendered with the new value yet.
+    const leaving = servingSizes.find((s) => s.id === selectedServingSizeId);
+    const weightG = leaving ? parseDecimal(leaving.weight_g) : 0;
+    if (weightG <= 0) return (current) => current;
+    return (current) => {
+      const quantity = parseFloat(current);
+      if (!Number.isFinite(quantity)) return current;
+      return cleanDecimalString(String(quantity * weightG));
+    };
+  }
+
   function handleSelectChange(value: string) {
     if (value === NEW_SERVING_SENTINEL) {
       setIsCreatingNew(true);
       return;
     }
     setIsCreatingNew(false);
-    onSelect(value === GRAMS_SENTINEL ? null : Number(value));
+    const newId = value === GRAMS_SENTINEL ? null : Number(value);
+    onSelect(newId, converterFor(newId));
   }
 
   async function handleCreateServing() {
     const weightG = parseFloat(newWeightG);
     if (!newName.trim() || !Number.isFinite(weightG) || weightG <= 0) return;
     const created = await createServingSize.mutateAsync({ itemId, name: newName.trim(), weightG });
-    onSelect(created.id);
+    onSelect(created.id, converterFor(created.id));
     setIsCreatingNew(false);
     setNewName("");
     setNewWeightG("");

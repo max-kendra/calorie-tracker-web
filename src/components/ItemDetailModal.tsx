@@ -149,10 +149,7 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
               <ServingPicker
                 itemId={log.item_id}
                 selectedServingSizeId={servingSizeId}
-                onSelect={(id) => {
-                  setServingSizeId(id);
-                  if (id != null) setQuantityInput("1");
-                }}
+                onSelect={(id, convertQuantity) => { setServingSizeId(id); setQuantityInput(convertQuantity); }}
               />
             )}
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
