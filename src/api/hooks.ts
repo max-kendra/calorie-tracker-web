@@ -13,6 +13,7 @@ import type {
   MealGoalSplitInput,
   MealType,
   OcrScanResult,
+  BackupStatus,
   Recipe,
   RecipeDetail,
   ServingSize,
@@ -453,6 +454,15 @@ export function useLogFromMeal() {
       queryClient.invalidateQueries({ queryKey: ["logs"] });
       queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
     },
+  });
+}
+
+export function useBackupStatus() {
+  return useQuery({
+    queryKey: ["backup-status"],
+    queryFn: () => api.get<BackupStatus>("/backup/status"),
+    refetchInterval: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

@@ -183,6 +183,18 @@ export interface OcrScanResult {
   macros: OcrMacros;
 }
 
+export interface BackupCheck {
+  ok: boolean;
+  last_success_at: number | null;
+  message: string | null;
+}
+
+export interface BackupStatus {
+  ok: boolean;
+  offsite: BackupCheck;
+  database: BackupCheck;
+}
+
 export interface Recipe {
   recipe_id: number;
   name: string;

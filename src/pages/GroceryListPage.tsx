@@ -13,6 +13,7 @@ import {
   useUpdateGroceryEntry,
 } from "@/api/hooks";
 import { toIsoDate } from "@/lib/dates";
+import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { usdaFoodToPrefill, type ItemFormPrefill } from "@/lib/itemPrefill";
 import { ItemEditDialog } from "@/components/ItemEditDialog";
 import { UsdaSearchPanel } from "@/components/UsdaSearchPanel";
@@ -186,8 +187,9 @@ function AddToPoolSearch() {
   );
 }
 
-function EntryCard({ entry, onDragStart, onDelete }: {
+function EntryCard({ entry, tinted = false, onDragStart, onDelete }: {
   entry: GroceryListEntry;
+  tinted?: boolean;
   onDragStart: (e: React.DragEvent, entry: GroceryListEntry) => void;
   onDelete: (entry: GroceryListEntry) => void;
 }) {
@@ -205,7 +207,9 @@ function EntryCard({ entry, onDragStart, onDelete }: {
     <div
       draggable
       onDragStart={(e) => onDragStart(e, entry)}
-      className="bg-gray-50 dark:bg-gray-700 rounded-lg px-2 py-1.5 mb-1 cursor-grab active:cursor-grabbing"
+      className={`${
+        tinted ? "bg-white dark:bg-gray-700" : "bg-gray-50 dark:bg-gray-700"
+      } rounded-lg px-2 py-1.5 mb-1 cursor-grab active:cursor-grabbing`}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm text-gray-800 dark:text-gray-100 truncate">{entry.item_name}</span>
@@ -231,6 +235,72 @@ function EntryCard({ entry, onDragStart, onDelete }: {
         className="w-full mt-1 bg-transparent border-none text-xs text-gray-500 dark:text-gray-400 placeholder:text-gray-300 dark:placeholder:text-gray-600 focus:outline-none"
       />
     </div>
+  );
+}
+
+function NewTripDialog({ stores, isPending, error, onCreate, onClose }: {
+  stores: { id: number; name: string }[];
+  isPending: boolean;
+  error: string | null;
+  onCreate: (trip: { date: string; label: string | null; store_id: number | null }) => void;
+  onClose: () => void;
+}) {
+  useEscapeToClose(onClose);
+  const [date, setDate] = useState(() => toIsoDate(new Date()));
+  const [label, setLabel] = useState("");
+  const [storeId, setStoreId] = useState<string>(ANY_STORE);
+  const inputClass = "w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm mb-2";
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <form
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xs p-4 pointer-events-auto"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!date || isPending) return;
+            onCreate({ date, label: label.trim() || null, store_id: storeId === ANY_STORE ? null : Number(storeId) });
+          }}
+        >
+          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-3">New trip</h2>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Label (optional)"
+            autoFocus
+            className={inputClass}
+          />
+          <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className={inputClass}>
+            <option value={ANY_STORE}>Any store</option>
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store.name}
+              </option>
+            ))}
+          </select>
+          {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 text-sm py-2 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="flex-1 text-sm py-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-40"
+            >
+              {isPending ? "..." : "Add trip"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
   );
 }
 
@@ -262,9 +332,7 @@ export function GroceryListPage() {
   const deleteTrip = useDeleteTrip();
 
   const [draggedEntryId, setDraggedEntryId] = useState<number | null>(null);
-  const [newTripDate, setNewTripDate] = useState(() => toIsoDate(new Date()));
-  const [newTripLabel, setNewTripLabel] = useState("");
-  const [newTripStoreId, setNewTripStoreId] = useState<string>(ANY_STORE);
+  const [showNewTrip, setShowNewTrip] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
 
   if (entriesQuery.isLoading || tripsQuery.isLoading) {
@@ -311,20 +379,7 @@ export function GroceryListPage() {
     setDraggedEntryId(null);
   }
 
-  function handleCreateTrip() {
-    if (!newTripDate) return;
-    createTrip.mutate(
-      {
-        date: newTripDate,
-        label: newTripLabel.trim() || null,
-        store_id: newTripStoreId === ANY_STORE ? null : Number(newTripStoreId),
-      },
-      { onSuccess: () => setNewTripLabel("") },
-    );
-  }
-
   const cardClass = "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-3";
-  const inputClass = "w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-sm mb-2";
 
   return (
     <div className="max-w-[2000px] mx-auto p-4">
@@ -335,63 +390,19 @@ export function GroceryListPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-[280px_1fr] gap-4 items-start">
-        {/* Pool - grouped by store */}
+      <div className="grid grid-cols-[280px_1fr] gap-4 h-[calc(100vh-10rem)] min-h-[24rem]">
         <div
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => handleDrop(e, null, null)}
-          className={`${cardClass} min-h-[200px]`}
+          className={`${cardClass} flex flex-col min-h-0`}
         >
-          <h2 className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Not yet planned</h2>
-          {poolByStore.size === 0 && <div className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">Nothing here</div>}
-          {Array.from(poolByStore.entries()).map(([key, bucket]) => (
-            <div key={key} className="mb-3">
-              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{bucket.name}</div>
-              {bucket.entries.map((entry) => (
-                <EntryCard
-                  key={entry.id}
-                  entry={entry}
-                  onDragStart={handleDragStart}
-                  onDelete={(e) => deleteEntry.mutate(e.id)}
-                />
-              ))}
-            </div>
-          ))}
-
-          <AddToPoolSearch />
-        </div>
-
-        {/* Trips */}
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {trips.map((trip) => {
-            const tripEntries = entries.filter((e) => e.trip_id === trip.id);
-
-            return (
-              <div
-                key={trip.id}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => handleDrop(e, trip.id, trip.store_id)}
-                className={`${cardClass} min-w-[220px] flex-1`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">{trip.label || trip.date}</div>
-                    <div className="text-xs text-gray-400 dark:text-gray-500">
-                      {trip.label && `${trip.date} - `}
-                      {trip.store?.name ?? "Any store"}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => deleteTrip.mutate(trip.id)}
-                    className="text-gray-300 dark:text-gray-600 hover:text-red-500 text-sm px-1"
-                    aria-label="Delete trip"
-                  >
-                    &times;
-                  </button>
-                </div>
-
-                {tripEntries.length === 0 && <div className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center">Drag items here</div>}
-                {tripEntries.map((entry) => (
+          <h2 className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2 shrink-0">Not yet planned</h2>
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+            {poolByStore.size === 0 && <div className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">Nothing here</div>}
+            {Array.from(poolByStore.entries()).map(([key, bucket]) => (
+              <div key={key} className="mb-3">
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{bucket.name}</div>
+                {bucket.entries.map((entry) => (
                   <EntryCard
                     key={entry.id}
                     entry={entry}
@@ -400,42 +411,89 @@ export function GroceryListPage() {
                   />
                 ))}
               </div>
-            );
-          })}
-
-          <div className={`${cardClass} min-w-[220px]`}>
-            <h2 className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">New trip</h2>
-            <input
-              type="date"
-              value={newTripDate}
-              onChange={(e) => setNewTripDate(e.target.value)}
-              className={inputClass}
-            />
-            <input
-              type="text"
-              value={newTripLabel}
-              onChange={(e) => setNewTripLabel(e.target.value)}
-              placeholder="Label (optional)"
-              className={inputClass}
-            />
-            <select value={newTripStoreId} onChange={(e) => setNewTripStoreId(e.target.value)} className={inputClass}>
-              <option value={ANY_STORE}>Any store</option>
-              {(storesQuery.data ?? []).map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleCreateTrip}
-              disabled={createTrip.isPending}
-              className="w-full bg-blue-500 text-white rounded-lg py-1.5 text-sm font-medium hover:bg-blue-600 disabled:opacity-40"
-            >
-              {createTrip.isPending ? "Creating..." : "Add trip"}
-            </button>
+            ))}
+          </div>
+          <div className="shrink-0">
+            <AddToPoolSearch />
           </div>
         </div>
+
+        <div className={`${cardClass} flex flex-col min-h-0 min-w-0`}>
+          <div className="flex items-center justify-between mb-2 shrink-0">
+            <h2 className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Trips</h2>
+            <button
+              onClick={() => setShowNewTrip(true)}
+              aria-label="New trip"
+              className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center justify-center text-gray-600 dark:text-gray-200 text-base leading-none"
+            >
+              +
+            </button>
+          </div>
+
+          {trips.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">
+              No trips yet - use + to plan one
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0 flex gap-3 overflow-x-auto pb-1">
+              {trips.map((trip) => {
+                const tripEntries = entries.filter((e) => e.trip_id === trip.id);
+
+                return (
+                  <div
+                    key={trip.id}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDrop(e, trip.id, trip.store_id)}
+                    className="bg-gray-50 dark:bg-gray-900/40 rounded-xl p-2 min-w-[240px] flex-1 flex flex-col min-h-0"
+                  >
+                    <div className="flex items-start justify-between mb-2 shrink-0">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">{trip.label || trip.date}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500">
+                          {trip.label && `${trip.date} - `}
+                          {trip.store?.name ?? "Any store"}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => deleteTrip.mutate(trip.id)}
+                        className="text-gray-300 dark:text-gray-600 hover:text-red-500 text-sm px-1"
+                        aria-label="Delete trip"
+                      >
+                        &times;
+                      </button>
+                    </div>
+
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                      {tripEntries.length === 0 && (
+                        <div className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center">Drag items here</div>
+                      )}
+                      {tripEntries.map((entry) => (
+                        <EntryCard
+                          key={entry.id}
+                          entry={entry}
+                          tinted
+                          onDragStart={handleDragStart}
+                          onDelete={(e) => deleteEntry.mutate(e.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      {showNewTrip && (
+        <NewTripDialog
+          stores={storesQuery.data ?? []}
+          isPending={createTrip.isPending}
+          error={createTrip.isError ? (createTrip.error as Error).message : null}
+          onClose={() => setShowNewTrip(false)}
+          onCreate={(trip) => createTrip.mutate(trip, { onSuccess: () => setShowNewTrip(false) })}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ApiKeyGate } from "@/components/ApiKeyGate";
+import { GlobalCreateButton } from "@/components/GlobalCreateButton";
+import { BackupBanner } from "@/components/BackupBanner";
 import { TopNav } from "@/components/TopNav";
 import { WeekView } from "@/pages/WeekView";
 import { RecipesPage } from "@/pages/RecipesPage";
@@ -22,9 +24,10 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ApiKeyGate>
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="min-h-screen bg-gray-100 dark:bg-gray-700">
           <BrowserRouter>
             <TopNav />
+            <BackupBanner />
             <Routes>
               <Route path="/" element={<WeekView />} />
               <Route path="/recipes" element={<RecipesPage />} />
@@ -33,6 +36,7 @@ export function App() {
               <Route path="/goals" element={<GoalsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
+            <GlobalCreateButton />
           </BrowserRouter>
         </div>
       </ApiKeyGate>
