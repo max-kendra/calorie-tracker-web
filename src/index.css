@@ -29,3 +29,17 @@ body {
     color: theme("colors.gray.500");
   }
 }
+
+/* Row macros only appear once the row is wide enough to fit them; the
+   narrow week-view columns skip them (they're in the item detail). */
+.log-row {
+  container-type: inline-size;
+}
+.log-macros {
+  display: none;
+}
+@container (min-width: 190px) {
+  .log-macros {
+    display: block;
+  }
+}

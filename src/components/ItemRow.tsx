@@ -70,41 +70,40 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
         tabIndex={0}
         onClick={() => onOpenDetail(log)}
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpenDetail(log)}
-        className={`cursor-pointer rounded px-1 -mx-1 hover:bg-gray-50 dark:hover:bg-gray-700 pr-14 flex items-center gap-2 ${draggable ? "active:cursor-grabbing" : ""}`}
+        className={`log-row cursor-pointer rounded px-1 -mx-1 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1.5 ${draggable ? "active:cursor-grabbing" : ""}`}
       >
         {log.image_path ? (
-          <img src={`/${log.image_path}`} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+          <img src={`/${log.image_path}`} alt="" className="w-7 h-7 rounded object-cover shrink-0" />
         ) : (
-          <div className="w-8 h-8 rounded bg-gray-100 dark:bg-gray-700 shrink-0" />
+          <div className="w-7 h-7 rounded bg-gray-100 dark:bg-gray-700 shrink-0" />
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-sm text-gray-800 dark:text-gray-100 truncate">{logDisplayName(log)}</span>
-            <span className="text-sm text-gray-500 dark:text-gray-300 shrink-0">{log.kcal_logged} Cal</span>
-          </div>
-          <div className="flex items-baseline justify-between gap-2">
+          <div className="text-sm leading-tight text-gray-800 dark:text-gray-100 line-clamp-2 break-words">{logDisplayName(log)}</div>
+          <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs text-gray-500 dark:text-gray-300">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onQuantityClick(log);
               }}
-              className="text-xs text-gray-500 dark:text-gray-300 hover:text-blue-600 hover:underline"
+              className="hover:text-blue-600 hover:underline text-left"
             >
               {logQuantityLabel(log)}
             </button>
-            <span className="text-xs shrink-0 space-x-1">
-              <span style={{ color: MACRO_COLORS.protein }}>{log.protein_g_logged}P</span>
-              <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
-              <span style={{ color: MACRO_COLORS.fat }}>{log.fat_g_logged}F</span>
-              <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
-              <span style={{ color: MACRO_COLORS.carbs }}>{log.carbs_g_logged}C</span>
-              <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
-              <span style={{ color: MACRO_COLORS.fiber }}>{log.fiber_g_logged}Fi</span>
-            </span>
+            <span>{"\u00b7"}</span>
+            <span className="whitespace-nowrap">{log.kcal_logged} Cal</span>
+          </div>
+          <div className="log-macros text-xs space-x-1">
+            <span style={{ color: MACRO_COLORS.protein }}>{log.protein_g_logged}P</span>
+            <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
+            <span style={{ color: MACRO_COLORS.fat }}>{log.fat_g_logged}F</span>
+            <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
+            <span style={{ color: MACRO_COLORS.carbs }}>{log.carbs_g_logged}C</span>
+            <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
+            <span style={{ color: MACRO_COLORS.fiber }}>{log.fiber_g_logged}Fi</span>
           </div>
         </div>
       </div>
-      <div className="absolute right-1 top-1.5 flex gap-1 rounded bg-white/90 dark:bg-gray-800/90 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
+      <div className="absolute right-0 top-1 flex gap-0.5 rounded bg-white/95 dark:bg-gray-800/95 shadow-sm opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition">
         {canAddToGroceryList && (
           <button
             onClick={(e) => {
