@@ -38,8 +38,16 @@ body {
 .log-macros {
   display: none;
 }
+.log-thumb {
+  width: 1.75rem;
+  height: 1.75rem;
+}
 @container (min-width: 190px) {
   .log-macros {
     display: block;
+  }
+  .log-thumb {
+    width: 2.75rem;
+    height: 2.75rem;
   }
 }

@@ -73,9 +73,9 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
         className={`log-row cursor-pointer rounded px-1 -mx-1 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1.5 ${draggable ? "active:cursor-grabbing" : ""}`}
       >
         {log.image_path ? (
-          <img src={`/${log.image_path}`} alt="" className="w-7 h-7 rounded object-cover shrink-0" />
+          <img src={`/${log.image_path}`} alt="" className="log-thumb rounded object-cover shrink-0" />
         ) : (
-          <div className="w-7 h-7 rounded bg-gray-100 dark:bg-gray-700 shrink-0" />
+          <div className="log-thumb rounded bg-gray-100 dark:bg-gray-700 shrink-0" />
         )}
         <div className="flex-1 min-w-0">
           <div className="text-sm leading-tight text-gray-800 dark:text-gray-100 line-clamp-2 break-words">{logDisplayName(log)}</div>
