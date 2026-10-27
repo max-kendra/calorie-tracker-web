@@ -1,12 +1,13 @@
 import { useState } from "react";
 import type { Log, LoggedRecipeIngredient } from "@/api/types";
-import { useDeleteLog, useUpdateLog } from "@/api/hooks";
+import { useCreateGroceryEntry, useDeleteLog, useUpdateLog } from "@/api/hooks";
 import { logDisplayName, logQuantityLabel } from "@/lib/macros";
 import { cleanDecimalString, parseDecimal } from "@/lib/format";
 import { MACRO_COLORS } from "@/lib/colors";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { RecipeEditDialog } from "./RecipeEditDialog";
 import { ServingPicker } from "./ServingPicker";
+import { CheckIcon, PlusIcon } from "./icons";
 
 /** Scales a frozen ingredient's logged amount back up to the FULL
  * batch, exactly as the recipe existed at the moment it was logged -
@@ -38,6 +39,8 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
   const isRecipeLog = log.recipe_id != null;
   const updateLog = useUpdateLog();
   const deleteLog = useDeleteLog();
+  const addToGroceryList = useCreateGroceryEntry();
+  const [addedItemId, setAddedItemId] = useState<number | null>(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRecipeDialog, setShowRecipeDialog] = useState(false);
@@ -71,11 +74,11 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
           <div className="p-4">
             <div className="flex items-start justify-between mb-1">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 pr-2">{logDisplayName(log)}</h2>
-              <button onClick={onClose} className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none">
+              <button onClick={onClose} className="text-gray-400 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none">
                 &times;
               </button>
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            <div className="text-sm text-gray-500 dark:text-gray-300 mb-3">
               {log.kcal_logged} Cal - {logQuantityLabel(log)}
             </div>
 
@@ -84,32 +87,32 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
                 <div className="font-medium" style={{ color: MACRO_COLORS.protein }}>
                   {log.protein_g_logged}g
                 </div>
-                <div className="text-xs text-gray-400 dark:text-gray-500">Protein</div>
+                <div className="text-xs text-gray-400 dark:text-gray-400">Protein</div>
               </div>
               <div>
                 <div className="font-medium" style={{ color: MACRO_COLORS.fat }}>
                   {log.fat_g_logged}g
                 </div>
-                <div className="text-xs text-gray-400 dark:text-gray-500">Fat</div>
+                <div className="text-xs text-gray-400 dark:text-gray-400">Fat</div>
               </div>
               <div>
                 <div className="font-medium" style={{ color: MACRO_COLORS.carbs }}>
                   {log.carbs_g_logged}g
                 </div>
-                <div className="text-xs text-gray-400 dark:text-gray-500">Carbs</div>
+                <div className="text-xs text-gray-400 dark:text-gray-400">Carbs</div>
               </div>
               <div>
                 <div className="font-medium" style={{ color: MACRO_COLORS.fiber }}>
                   {log.fiber_g_logged}g
                 </div>
-                <div className="text-xs text-gray-400 dark:text-gray-500">Fiber</div>
+                <div className="text-xs text-gray-400 dark:text-gray-400">Fiber</div>
               </div>
             </div>
 
             {isRecipeLog && (
               <div className="mb-4">
                 <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                  <span className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide">
                     Full recipe, as made that day
                   </span>
                   {log.recipe_id != null && (
@@ -122,21 +125,53 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
                   )}
                 </div>
                 {!log.has_ingredient_snapshot ? (
-                  <div className="text-xs text-gray-400 dark:text-gray-500">
+                  <div className="text-xs text-gray-400 dark:text-gray-400">
                     This log predates ingredient tracking - only the current recipe is available.
                   </div>
                 ) : log.ingredients.length === 0 ? (
-                  <div className="text-xs text-gray-400 dark:text-gray-500">No ingredients recorded for this log.</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-400">No ingredients recorded for this log.</div>
                 ) : (
                   <div className="space-y-1">
                     {log.ingredients.map((ingredient, i) => {
                       const grams = fullBatchGrams(ingredient, log);
+                      const itemId = ingredient.item_id;
                       return (
-                        <div key={i} className="flex items-baseline justify-between text-sm">
-                          <span className="text-gray-700 dark:text-gray-200">{ingredient.item_name}</span>
-                          <span className="text-gray-400 dark:text-gray-500 text-xs">
-                            {grams != null ? `${Math.ceil(grams)}g` : "\u2014"}
-                          </span>
+                        <div key={i} className="group flex items-center gap-2 text-sm rounded px-1 -mx-1 hover:bg-gray-50 dark:hover:bg-gray-700/60">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="text-gray-700 dark:text-gray-200 truncate">{ingredient.item_name}</span>
+                              <span className="text-gray-400 dark:text-gray-300 text-xs shrink-0">
+                                {grams != null ? `${Math.ceil(grams)}g` : "\u2014"}
+                              </span>
+                            </div>
+                            {ingredient.protein_g != null && (
+                              <div className="text-xs space-x-1.5">
+                                <span className="text-gray-500 dark:text-gray-300">{ingredient.kcal} Cal</span>
+                                <span style={{ color: MACRO_COLORS.protein }}>{ingredient.protein_g}P</span>
+                                <span style={{ color: MACRO_COLORS.fat }}>{ingredient.fat_g}F</span>
+                                <span style={{ color: MACRO_COLORS.carbs }}>{ingredient.carbs_g}C</span>
+                                <span style={{ color: MACRO_COLORS.fiber }}>{ingredient.fiber_g}Fi</span>
+                              </div>
+                            )}
+                          </div>
+                          {itemId != null && (
+                            <button
+                              onClick={() =>
+                                addToGroceryList.mutate(itemId, {
+                                  onSuccess: () => {
+                                    setAddedItemId(itemId);
+                                    setTimeout(() => setAddedItemId((current) => (current === itemId ? null : current)), 1500);
+                                  },
+                                })
+                              }
+                              disabled={addToGroceryList.isPending}
+                              aria-label="Add to grocery list"
+                              title="Add to grocery list"
+                              className="p-1 rounded shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-300"
+                            >
+                              {addedItemId === itemId ? <CheckIcon className="w-4 h-4 text-green-500" /> : <PlusIcon />}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -152,7 +187,7 @@ export function ItemDetailModal({ log, onClose }: ItemDetailModalProps) {
                 onSelect={(id, convertQuantity) => { setServingSizeId(id); setQuantityInput(convertQuantity); }}
               />
             )}
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">
               Quantity {isRecipeLog ? "(servings)" : servingSizeId == null ? "(g)" : ""}
             </label>
             <input

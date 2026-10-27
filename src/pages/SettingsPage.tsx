@@ -97,7 +97,7 @@ export function SettingsPage() {
 
   const inputClass = "w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2 text-sm";
   const cardClass = "bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-4 mb-4";
-  const labelClass = "block text-xs text-gray-500 dark:text-gray-400 mb-1";
+  const labelClass = "block text-xs text-gray-500 dark:text-gray-300 mb-1";
 
   // Newest first - scanning recent readings is the common case for a
   // raw list, unlike the chart above it which reads left-to-right
@@ -114,12 +114,12 @@ export function SettingsPage() {
         {/* Weight history - chart plus the raw values underneath it */}
         <div className={cardClass}>
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Weight history</h2>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+          <p className="text-xs text-gray-400 dark:text-gray-400 mb-3">
             Synced from Health Connect via the Android app - read-only here. Edit or delete a reading in Health
             Connect (e.g. Libra) itself, then sync again from the app's Health Connect settings.
           </p>
           {weightHistoryQuery.isLoading ? (
-            <div className="text-sm text-gray-400 dark:text-gray-500">Loading...</div>
+            <div className="text-sm text-gray-400 dark:text-gray-400">Loading...</div>
           ) : weightHistoryQuery.isError ? (
             <div className="text-sm text-red-500">Couldn't load weight history: {(weightHistoryQuery.error as Error).message}</div>
           ) : (
@@ -132,7 +132,7 @@ export function SettingsPage() {
                       key={`${entry.recorded_at}-${i}`}
                       className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 dark:border-gray-700 last:border-b-0"
                     >
-                      <span className="text-gray-500 dark:text-gray-400">
+                      <span className="text-gray-500 dark:text-gray-300">
                         {new Date(entry.recorded_at).toLocaleString(undefined, {
                           dateStyle: "medium",
                           timeStyle: "short",
@@ -154,7 +154,7 @@ export function SettingsPage() {
           <div className={cardClass} onPaste={handlePastePhoto}>
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Profile</h2>
             {profileQuery.isLoading ? (
-              <div className="text-sm text-gray-400 dark:text-gray-500">Loading...</div>
+              <div className="text-sm text-gray-400 dark:text-gray-400">Loading...</div>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export function SettingsPage() {
                   >
                     {uploadPhoto.isPending ? "Uploading..." : profilePicPath ? "Change photo" : "Add photo"}
                   </button>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">or paste (Ctrl+V)</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-400">or paste (Ctrl+V)</span>
                   <input ref={photoFileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFileSelected} />
                 </div>
                 {uploadPhoto.isError && <div className="text-xs text-red-500">{(uploadPhoto.error as Error).message}</div>}

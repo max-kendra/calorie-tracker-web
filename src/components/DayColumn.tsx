@@ -49,11 +49,11 @@ export function DayColumn({
       <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-t-xl border-b border-gray-100 dark:border-gray-700">
         <div className="flex items-baseline justify-between">
           <span className={`text-sm font-semibold ${today ? "text-blue-600 dark:text-blue-400" : "text-gray-800 dark:text-gray-100"}`}>
-            {weekdayLabel(date)} <span className="font-normal text-gray-400 dark:text-gray-500">{shortDateLabel(date)}</span>
+            {weekdayLabel(date)} <span className="font-normal text-gray-400 dark:text-gray-400">{shortDateLabel(date)}</span>
           </span>
         </div>
         <div className="text-xs mt-0.5 space-x-1">
-          <span className="text-gray-500 dark:text-gray-400">
+          <span className="text-gray-500 dark:text-gray-300">
             {dayTotals.kcal}
             {kcalGoal != null ? `/${kcalGoal}` : ""} Cal
           </span>

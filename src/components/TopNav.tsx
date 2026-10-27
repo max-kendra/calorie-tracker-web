@@ -25,7 +25,7 @@ export function TopNav() {
               `px-4 py-3 text-sm font-medium border-b-2 transition ${
                 isActive
                   ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  : "border-transparent text-gray-500 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-200"
               }`
             }
           >
@@ -34,7 +34,7 @@ export function TopNav() {
         ))}
         <button
           onClick={toggleTheme}
-          className="ml-auto text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 text-lg px-2"
+          className="ml-auto text-gray-400 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-lg px-2"
           aria-label="Toggle dark mode"
         >
           {theme === "dark" ? "\u2600" : "\u263D"}

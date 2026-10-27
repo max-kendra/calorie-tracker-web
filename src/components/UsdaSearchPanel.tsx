@@ -77,7 +77,7 @@ export function UsdaSearchPanel({ initialQuery, onPick, onBack }: UsdaSearchPane
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">USDA FoodData Central</div>
+        <div className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide">USDA FoodData Central</div>
         <button onClick={onBack} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
           Back to my items
         </button>
@@ -110,18 +110,18 @@ export function UsdaSearchPanel({ initialQuery, onPick, onBack }: UsdaSearchPane
       </div>
 
       {submitted == null && (
-        <div className="text-xs text-gray-400 dark:text-gray-500 py-2">
+        <div className="text-xs text-gray-400 dark:text-gray-400 py-2">
           {kind === "whole"
             ? "Raw and whole foods, lab-analyzed (e.g. chicken breast, banana, rice)."
             : "Packaged products, searched by name (e.g. a specific brand's yogurt)."}
         </div>
       )}
-      {searchQuery.isFetching && <div className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">Searching USDA...</div>}
+      {searchQuery.isFetching && <div className="text-sm text-gray-400 dark:text-gray-400 py-4 text-center">Searching USDA...</div>}
       {searchQuery.isError && !searchQuery.isFetching && (
         <div className="text-xs text-red-500 py-2">{(searchQuery.error as Error).message}</div>
       )}
       {searchQuery.isSuccess && !searchQuery.isFetching && (searchQuery.data ?? []).length === 0 && (
-        <div className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">
+        <div className="text-sm text-gray-400 dark:text-gray-400 py-4 text-center">
           No USDA results for "{submitted?.query}"
         </div>
       )}
@@ -133,7 +133,7 @@ export function UsdaSearchPanel({ initialQuery, onPick, onBack }: UsdaSearchPane
             className="w-full text-left py-2 px-1 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
           >
             <div className="text-sm text-gray-800 dark:text-gray-100">{food.description}</div>
-            <div className="text-xs text-gray-400 dark:text-gray-500">
+            <div className="text-xs text-gray-400 dark:text-gray-400">
               {food.brand_owner ? `${food.brand_owner} \u00b7 ` : ""}
               <MacroSummary food={food} />
             </div>

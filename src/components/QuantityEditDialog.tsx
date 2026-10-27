@@ -49,7 +49,7 @@ export function QuantityEditDialog({ log, onClose }: QuantityEditDialogProps) {
             />
           )}
 
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+          <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">
             Quantity {isRecipeLog ? "(servings)" : servingSizeId == null ? "(g)" : ""}
           </label>
           <input

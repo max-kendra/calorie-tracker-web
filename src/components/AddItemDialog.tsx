@@ -141,7 +141,7 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
             <div className="p-4">
               <div className="flex items-start justify-between mb-3">
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 pr-2">{selected.name}</h2>
-                <button onClick={() => setSelected(null)} className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 text-sm">
+                <button onClick={() => setSelected(null)} className="text-gray-400 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm">
                   &larr; Back
                 </button>
               </div>
@@ -155,12 +155,12 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
               )}
 
               {selected.isMeal ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                <p className="text-sm text-gray-500 dark:text-gray-300 mb-2">
                   Adds everything in this meal as separate entries you can edit individually.
                 </p>
               ) : (
                 <>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">
                     Quantity {selected.kind === "item" ? (servingSizeId == null ? "(g)" : "") : "(servings)"}
                   </label>
                   <input
@@ -207,7 +207,7 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
                     }}
                     aria-label="Clear search"
                     disabled={query.length === 0 && !showUsda}
-                    className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 text-xl leading-none px-1"
+                    className="text-gray-400 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 text-xl leading-none px-1"
                   >
                     &times;
                   </button>
@@ -234,12 +234,12 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
                     onBack={() => setShowUsda(false)}
                   />
                 ) : debouncedQuery.trim().length === 0 ? (
-                  <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">Start typing to search</div>
+                  <div className="text-sm text-gray-400 dark:text-gray-400 text-center py-8">Start typing to search</div>
                 ) : isSearching && results.length === 0 ? (
-                  <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">Searching...</div>
+                  <div className="text-sm text-gray-400 dark:text-gray-400 text-center py-8">Searching...</div>
                 ) : results.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="text-sm text-gray-400 dark:text-gray-500 mb-3">No matches</div>
+                    <div className="text-sm text-gray-400 dark:text-gray-400 mb-3">No matches</div>
                     <div className="flex gap-2 justify-center">
                       <button
                         onClick={() => setShowUsda(true)}
@@ -263,7 +263,7 @@ export function AddItemDialog({ date, mealType, onClose }: AddItemDialogProps) {
                       className="w-full text-left py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 -mx-1 flex items-baseline justify-between gap-2"
                     >
                       <span className="text-sm text-gray-800 dark:text-gray-100 truncate">{row.name}</span>
-                      {row.kcalLabel && <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{row.kcalLabel}</span>}
+                      {row.kcalLabel && <span className="text-xs text-gray-400 dark:text-gray-400 shrink-0">{row.kcalLabel}</span>}
                     </button>
                   ))
                 )}

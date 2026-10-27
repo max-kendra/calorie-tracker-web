@@ -44,7 +44,7 @@ export function WeekPickerDialog({ currentAnchor, onSelectWeek, onClose }: WeekP
           <div className="flex items-center justify-between mb-3">
             <button
               onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-              className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400"
+              className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300"
               aria-label="Previous month"
             >
               &larr;
@@ -52,7 +52,7 @@ export function WeekPickerDialog({ currentAnchor, onSelectWeek, onClose }: WeekP
             <div className="font-semibold text-gray-800 dark:text-gray-100">{MONTH_YEAR_FORMATTER.format(viewMonth)}</div>
             <button
               onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-              className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400"
+              className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300"
               aria-label="Next month"
             >
               &rarr;
@@ -62,9 +62,9 @@ export function WeekPickerDialog({ currentAnchor, onSelectWeek, onClose }: WeekP
           <table className="w-full border-separate border-spacing-1">
             <thead>
               <tr>
-                <th className="w-7 text-xs text-gray-400 dark:text-gray-500 font-normal">Wk</th>
+                <th className="w-7 text-xs text-gray-400 dark:text-gray-400 font-normal">Wk</th>
                 {weekdayLabels.map((label, i) => (
-                  <th key={i} className="text-xs text-gray-400 dark:text-gray-500 font-normal pb-1">
+                  <th key={i} className="text-xs text-gray-400 dark:text-gray-400 font-normal pb-1">
                     {label}
                   </th>
                 ))}
@@ -76,7 +76,7 @@ export function WeekPickerDialog({ currentAnchor, onSelectWeek, onClose }: WeekP
                 const isSelectedWeek = rowStartIso === currentWeekStartIso;
                 return (
                   <tr key={rowStartIso} className="group">
-                    <td className="text-xs text-gray-400 dark:text-gray-500 text-center">{isoWeekNumber(row[0])}</td>
+                    <td className="text-xs text-gray-400 dark:text-gray-400 text-center">{isoWeekNumber(row[0])}</td>
                     {row.map((day) => {
                       const iso = toIsoDate(day);
                       const inViewMonth = day.getMonth() === viewMonth.getMonth();

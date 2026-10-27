@@ -81,7 +81,7 @@ export function MealSection({
           onClick={() => onAddItem(date, mealType)}
           className="w-full mt-1 rounded-lg border border-dashed border-gray-200 dark:border-gray-600 py-2 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition group/add"
         >
-          <span className="w-6 h-6 rounded-full bg-gray-200 group-hover/add:bg-gray-300 flex items-center justify-center text-gray-500 dark:text-gray-400 text-base leading-none">
+          <span className="w-6 h-6 rounded-full bg-gray-200 group-hover/add:bg-gray-300 flex items-center justify-center text-gray-500 dark:text-gray-300 text-base leading-none">
             +
           </span>
         </button>

@@ -335,6 +335,19 @@ export function useDeleteTrip() {
   });
 }
 
+/** Completing a trip treats everything in it as bought: the backend
+ * deletes the trip and its entries. */
+export function useCompleteTrip() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (tripId: number) => api.post<void>(`/grocery-lists/trips/${tripId}/complete`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["grocery-trips"] });
+      queryClient.invalidateQueries({ queryKey: ["grocery-entries"] });
+    },
+  });
+}
+
 export function useGroceryEntries() {
   return useQuery({
     queryKey: ["grocery-entries"],
@@ -436,6 +449,7 @@ export function useCreateRecipe() {
       servings: number;
       source_url: string | null;
       image_path: string | null;
+      full_ingredients?: string | null;
     }) => api.post<RecipeDetail>("/recipes", { ...payload, ingredients: [] }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recipes-list-editor"] });

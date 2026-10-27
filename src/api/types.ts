@@ -250,6 +250,7 @@ export interface RecipeDetail {
   source_url: string | null;
   image_path: string | null;
   servings: string;
+  full_ingredients: string | null;
   ingredients: RecipeIngredientDetail[];
   components: RecipeComponentDetail[];
   steps: RecipeStep[];

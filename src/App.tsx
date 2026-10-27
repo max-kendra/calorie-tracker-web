@@ -24,7 +24,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ApiKeyGate>
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-700">
+        <div className="min-h-screen bg-gray-100 dark:bg-gray-950">
           <BrowserRouter>
             <TopNav />
             <BackupBanner />

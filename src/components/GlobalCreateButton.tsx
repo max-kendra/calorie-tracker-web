@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ItemEditDialog } from "./ItemEditDialog";
 import { RecipeEditDialog } from "./RecipeEditDialog";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
+import { PlusIcon } from "./icons";
 
 type CreateTarget = "item" | "recipe";
 
@@ -51,9 +52,9 @@ export function GlobalCreateButton() {
         <button
           onClick={() => setMenuOpen((open) => !open)}
           aria-label="Create new"
-          className="w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg flex items-center justify-center text-3xl leading-none"
+          className="w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg flex items-center justify-center"
         >
-          +
+          <PlusIcon className="w-7 h-7" />
         </button>
       </div>
 

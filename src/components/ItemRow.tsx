@@ -69,7 +69,7 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-sm text-gray-800 dark:text-gray-100 truncate">{logDisplayName(log)}</span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">{log.kcal_logged} Cal</span>
+            <span className="text-sm text-gray-500 dark:text-gray-300 shrink-0">{log.kcal_logged} Cal</span>
           </div>
           <div className="flex items-baseline justify-between gap-2">
             <button
@@ -77,7 +77,7 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
                 e.stopPropagation();
                 onQuantityClick(log);
               }}
-              className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:underline"
+              className="text-xs text-gray-500 dark:text-gray-300 hover:text-blue-600 hover:underline"
             >
               {logQuantityLabel(log)}
             </button>
@@ -101,7 +101,7 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
               onAddToGroceryList(log);
             }}
             aria-label="Add to grocery list"
-            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-300"
           >
             <PlusIcon />
           </button>

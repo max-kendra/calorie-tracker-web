@@ -78,7 +78,7 @@ export function ItemEditorPage() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-700">
+            <tr className="text-left text-xs text-gray-400 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
               <th className="px-4 py-2 font-normal">Name</th>
               <th className="px-4 py-2 font-normal">Type</th>
               <th className="px-4 py-2 font-normal">Calories</th>
@@ -96,18 +96,18 @@ export function ItemEditorPage() {
                 className="border-b border-gray-50 last:border-b-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 <td className="px-4 py-2 text-gray-800 dark:text-gray-100">{item.brand ? `${item.name} (${item.brand})` : item.name}</td>
-                <td className="px-4 py-2 text-gray-500 dark:text-gray-400 capitalize">{item.type}</td>
-                <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
+                <td className="px-4 py-2 text-gray-500 dark:text-gray-300 capitalize">{item.type}</td>
+                <td className="px-4 py-2 text-gray-500 dark:text-gray-300">
                   {item.kcal_100g ? `${Math.round(parseDecimal(item.kcal_100g))}/100g` : "-"}
                 </td>
-                <td className="px-4 py-2 text-gray-500 dark:text-gray-400">
+                <td className="px-4 py-2 text-gray-500 dark:text-gray-300">
                   {item.grocery_stores.length > 0 ? item.grocery_stores.map((s) => s.name).join(", ") : "-"}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">Nothing here yet</div>}
+        {rows.length === 0 && <div className="text-sm text-gray-400 dark:text-gray-400 text-center py-8">Nothing here yet</div>}
       </div>
 
       {showItemDialog && <ItemEditDialog itemId={editingItemId} onClose={() => setShowItemDialog(false)} />}

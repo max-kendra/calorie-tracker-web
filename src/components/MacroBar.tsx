@@ -19,7 +19,7 @@ export function MacroBar({ label, eaten, goal, color, unit = "g", compact = fals
     <div className="w-full">
       <div className={`flex items-baseline justify-between ${compact ? "text-xs" : "text-sm"}`}>
         <span className="font-medium text-gray-700 dark:text-gray-200">{label}</span>
-        <span className="text-gray-500 dark:text-gray-400">
+        <span className="text-gray-500 dark:text-gray-300">
           {eaten}
           {unit} / {goal}
           {unit}

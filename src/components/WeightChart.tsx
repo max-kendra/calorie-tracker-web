@@ -58,7 +58,7 @@ export function WeightChart({ entries }: WeightChartProps) {
   }, [entries, range]);
 
   if (entries.length === 0) {
-    return <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No synced weight readings yet</div>;
+    return <div className="text-sm text-gray-400 dark:text-gray-400 text-center py-8">No synced weight readings yet</div>;
   }
 
   const chartInnerWidth = WIDTH - PADDING.left - PADDING.right;
@@ -86,7 +86,7 @@ export function WeightChart({ entries }: WeightChartProps) {
     return (
       <div>
         {rangeChips}
-        <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">No readings in this range</div>
+        <div className="text-sm text-gray-400 dark:text-gray-400 text-center py-8">No readings in this range</div>
       </div>
     );
   }

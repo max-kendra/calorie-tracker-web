@@ -82,7 +82,7 @@ export function ServingPicker({ itemId, selectedServingSizeId, onSelect }: Servi
 
   return (
     <div>
-      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Serving</label>
+      <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">Serving</label>
       <select
         value={selectValue}
         onChange={(e) => handleSelectChange(e.target.value)}
@@ -99,22 +99,22 @@ export function ServingPicker({ itemId, selectedServingSizeId, onSelect }: Servi
 
       {isCreatingNew && (
         <div className="mb-2 space-y-2">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Serving name, e.g. 1 slice"
-            className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-          />
           <div className="flex gap-2">
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Name, e.g. 1 slice"
+              className="flex-1 min-w-0 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+            />
             <input
               type="number"
               step="any"
               min="0"
               value={newWeightG}
               onChange={(e) => setNewWeightG(e.target.value)}
-              placeholder="Weight in grams"
-              className="flex-1 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+              placeholder="Grams"
+              className="w-20 shrink-0 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
             />
             <button
               onClick={handleCreateServing}

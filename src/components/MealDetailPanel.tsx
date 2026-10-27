@@ -92,7 +92,7 @@ export function MealDetailPanel({
               <MacroBar label="Fiber" eaten={totals.fiber_g} goal={split.computed_totals.fiber_g} color={MACRO_COLORS.fiber} compact />
             </>
           ) : (
-            <div className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="text-sm text-gray-500 dark:text-gray-300">
               {totals.kcal} Cal - {totals.protein_g}P - {totals.fat_g}F - {totals.carbs_g}C - {totals.fiber_g}Fi
             </div>
           )}
@@ -106,7 +106,7 @@ export function MealDetailPanel({
             onClick={() => onAddItem(date, mealType)}
             className="w-full mt-1 rounded-lg border border-dashed border-gray-200 dark:border-gray-600 py-2 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition group/add"
           >
-            <span className="w-6 h-6 rounded-full bg-gray-200 group-hover/add:bg-gray-300 flex items-center justify-center text-gray-500 dark:text-gray-400 text-base leading-none">
+            <span className="w-6 h-6 rounded-full bg-gray-200 group-hover/add:bg-gray-300 flex items-center justify-center text-gray-500 dark:text-gray-300 text-base leading-none">
               +
             </span>
           </button>

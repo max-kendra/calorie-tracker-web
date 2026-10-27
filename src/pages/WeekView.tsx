@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { Log, MealType } from "@/api/types";
 import { useCreateGroceryEntry, useCreateLog, useDeleteLog, useGoalsList, useLogsRange } from "@/api/hooks";
-import { addDays, formatWeekRangeLabel, isoWeekNumber, startOfWeek, weekDates } from "@/lib/dates";
+import { addDays, formatWeekRangeLabel, fromIsoDate, isoWeekNumber, startOfWeek, toIsoDate, weekDates } from "@/lib/dates";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { resolveGoalForDate, sumGoalTargetsForWeek } from "@/lib/goals";
 import { groupByDateAndMeal, logDisplayName, sumTotals } from "@/lib/macros";
 import { DayColumn } from "@/components/DayColumn";
@@ -13,8 +15,34 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { WeekPickerDialog } from "@/components/WeekPickerDialog";
 import { AddItemDialog } from "@/components/AddItemDialog";
 
+const NAV_BUTTON_CLASS =
+  "w-9 h-9 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-200 flex items-center justify-center";
+const WEEK_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 export function WeekView() {
-  const [anchorDate, setAnchorDate] = useState(() => new Date());
+  // The viewed week lives in the URL (?week=YYYY-MM-DD, the week's first
+  // day) so a refresh or shared link stays on the same week. No param
+  // means the current week. Any date in the param is snapped to its
+  // week's start, which also keeps old links valid if the first-day-of-
+  // week setting changes.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const weekParam = searchParams.get("week");
+  const anchorDate = useMemo(() => {
+    if (weekParam && WEEK_PARAM_PATTERN.test(weekParam)) {
+      const parsed = fromIsoDate(weekParam);
+      if (!Number.isNaN(parsed.getTime())) return startOfWeek(parsed);
+    }
+    return new Date();
+  }, [weekParam]);
+
+  function setAnchorDate(date: Date) {
+    const start = startOfWeek(date);
+    if (toIsoDate(start) === toIsoDate(startOfWeek(new Date()))) {
+      setSearchParams({});
+    } else {
+      setSearchParams({ week: toIsoDate(start) });
+    }
+  }
   const dates = weekDates(anchorDate);
   const startDate = dates[0];
   const endDate = dates[6];
@@ -54,14 +82,14 @@ export function WeekView() {
   }
 
   function goToPreviousWeek() {
-    setAnchorDate((prev) => addDays(startOfWeek(prev), -1));
+    setAnchorDate(addDays(startOfWeek(anchorDate), -1));
   }
   function goToNextWeek() {
-    setAnchorDate((prev) => addDays(startOfWeek(prev), 7));
+    setAnchorDate(addDays(startOfWeek(anchorDate), 7));
   }
 
   if (logsQuery.isLoading || goalsQuery.isLoading) {
-    return <div className="p-8 text-center text-gray-400 dark:text-gray-500">Loading...</div>;
+    return <div className="p-8 text-center text-gray-400 dark:text-gray-400">Loading...</div>;
   }
   if (logsQuery.isError) {
     return <div className="p-8 text-center text-red-500">Couldn't load logs: {(logsQuery.error as Error).message}</div>;
@@ -143,26 +171,22 @@ export function WeekView() {
     <div className="max-w-[2000px] mx-auto p-4">
       <div className="grid grid-cols-3 items-center mb-4">
         <div className="flex items-center gap-2 justify-self-start">
-          <button onClick={goToPreviousWeek} className="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-            &larr;
+          <button onClick={goToPreviousWeek} className={NAV_BUTTON_CLASS} aria-label="Previous week">
+            <ChevronLeftIcon className="w-5 h-5" />
           </button>
-          <button
-            onClick={() => setShowWeekPicker(true)}
-            className="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center"
-            aria-label="Pick a week"
-          >
-            <svg viewBox="0 0 20 20" fill="none" className="w-4 h-4">
+          <button onClick={() => setShowWeekPicker(true)} className={NAV_BUTTON_CLASS} aria-label="Pick a week">
+            <svg viewBox="0 0 20 20" fill="none" className="w-5 h-5">
               <rect x="3" y="4" width="14" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
               <path d="M3 8h14M7 2.5v3M13 2.5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
           </button>
-          <button onClick={goToNextWeek} className="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-            &rarr;
+          <button onClick={goToNextWeek} className={NAV_BUTTON_CLASS} aria-label="Next week">
+            <ChevronRightIcon className="w-5 h-5" />
           </button>
         </div>
         <div className="text-center justify-self-center">
           <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">Week {weekNumber}</h1>
-          <div className="text-xs text-gray-400 dark:text-gray-500">{formatWeekRangeLabel(startDate, endDate)}</div>
+          <div className="text-xs text-gray-400 dark:text-gray-400">{formatWeekRangeLabel(startDate, endDate)}</div>
         </div>
         <div />
       </div>

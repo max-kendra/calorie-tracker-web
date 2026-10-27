@@ -29,7 +29,7 @@ export function ConfirmDialog({
       <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xs p-4 pointer-events-auto">
           <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">{title}</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{message}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">{message}</p>
           {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
           <div className="flex gap-2">
             <button

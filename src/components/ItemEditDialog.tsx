@@ -14,6 +14,7 @@ import {
   useUploadItemPhoto,
 } from "@/api/hooks";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
+import { DialogShell, type DialogSection } from "./DialogShell";
 import { usePasteImage } from "@/lib/usePasteImage";
 import { cleanDecimalString } from "@/lib/format";
 
@@ -43,10 +44,20 @@ function parseOptionalNumber(value: string): number | null {
 
 const inputClass =
   "w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2 text-sm";
-const labelClass = "block text-xs text-gray-500 dark:text-gray-400 mb-1";
+type ItemSectionId = "basics" | "nutrition" | "servings" | "stores";
+
+const ITEM_SECTIONS: DialogSection[] = [
+  { id: "basics", label: "Basics" },
+  { id: "nutrition", label: "Nutrition" },
+  { id: "servings", label: "Serving sizes" },
+  { id: "stores", label: "Grocery stores" },
+];
+
+const labelClass = "block text-xs text-gray-500 dark:text-gray-300 mb-1";
 
 export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }: ItemEditDialogProps) {
   useEscapeToClose(onClose);
+  const [section, setSection] = useState<ItemSectionId>("basics");
   const isCreating = itemId == null;
 
   const itemDetailQuery = useItemDetail(itemId);
@@ -87,9 +98,13 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
   const [newServingName, setNewServingName] = useState("");
   const [newServingWeightG, setNewServingWeightG] = useState("");
 
+  // Filled from the server once per item. Re-filling on every refetch
+  // (e.g. after adding a serving size) used to discard unsaved edits.
+  const seededForRef = useRef<number | null>(null);
   useEffect(() => {
     const item = itemDetailQuery.data;
-    if (!item) return;
+    if (!item || seededForRef.current === item.item_id) return;
+    seededForRef.current = item.item_id;
     setName(item.name);
     setBrand(item.brand ?? "");
     setBarcode(item.barcode ?? "");
@@ -234,24 +249,32 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
       : null;
   const isSaving = createItem.isPending || updateItem.isPending;
 
-  return (
+  const footer = (
     <>
-      <div className={`fixed inset-0 bg-black/30 ${stacked ? "z-[60]" : "z-40"}`} onClick={onClose} />
-      <div className={`fixed inset-0 ${stacked ? "z-[70]" : "z-50"} flex items-start justify-center pt-10 p-4 pointer-events-none`}>
-        <div
-          onPaste={handlePastePhoto}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[85vh] pointer-events-auto"
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-              {isCreating && createdItemId == null ? "New item" : "Edit item"}
-            </h2>
-            <button onClick={onClose} className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none">
-              &times;
-            </button>
-          </div>
+      {saveError && <div className="text-xs text-red-500 mb-2">{saveError}</div>}
+      <button
+        onClick={handleSave}
+        disabled={isSaving || !name.trim()}
+        className="w-full bg-blue-500 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-40 hover:bg-blue-600"
+      >
+        {isSaving ? "Saving..." : isCreating && createdItemId == null ? "Create" : "Save"}
+      </button>
+    </>
+  );
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+  return (
+    <DialogShell
+      title={isCreating && createdItemId == null ? "New item" : "Edit item"}
+      onClose={onClose}
+      stacked={stacked}
+      sections={ITEM_SECTIONS}
+      activeSection={section}
+      onSectionChange={(id) => setSection(id as ItemSectionId)}
+      footer={footer}
+      onPaste={handlePastePhoto}
+    >
+      {section === "basics" && (
+        <>
             {isCreating && prefill?.origin === "usda_import" && (
               <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-2">
                 Imported from USDA FoodData Central - please review the name and values before saving. A blank
@@ -271,7 +294,7 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
               >
                 {uploadPhoto.isPending ? "Uploading..." : imagePath ? "Change photo" : "Add photo"}
               </button>
-              <span className="text-xs text-gray-400 dark:text-gray-500">or paste (Ctrl+V)</span>
+              <span className="text-xs text-gray-400 dark:text-gray-400">or paste (Ctrl+V)</span>
               <input ref={photoFileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFileSelected} />
             </div>
             {uploadPhoto.isError && <div className="text-xs text-red-500">{(uploadPhoto.error as Error).message}</div>}
@@ -303,7 +326,7 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
                 <div className="text-xs text-red-500 mt-1">{(scanBarcode.error as Error).message}</div>
               )}
               {scanBarcode.data && !scanBarcode.data.barcode && (
-                <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">Couldn't read a barcode from that photo.</div>
+                <div className="text-xs text-gray-400 dark:text-gray-400 mt-1">Couldn't read a barcode from that photo.</div>
               )}
               {matchedExistingItem && (
                 <div className="text-xs text-amber-600 mt-1">
@@ -331,8 +354,12 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
               </div>
             </div>
 
+        </>
+      )}
+      {section === "nutrition" && (
+        <>
             <div className="flex items-center justify-between pt-1">
-              <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Macros, per 100g</div>
+              <div className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide">Macros, per 100g</div>
               <button
                 onClick={() => labelFileInputRef.current?.click()}
                 disabled={scanLabel.isPending}
@@ -387,14 +414,18 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
               <span className="text-sm font-medium text-blue-600">{countsAsAddedSugar ? "Yes" : "No"}</span>
             </button>
 
-            {effectiveItemId != null && (
+        </>
+      )}
+      {section === "servings" && (
+        <>
+            {effectiveItemId != null ? (
               <>
-                <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2">Serving sizes</div>
+                <div className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide pt-2">Serving sizes</div>
                 {(itemDetailQuery.data?.serving_sizes ?? []).map((s) => (
                   <div key={s.id} className="flex items-center justify-between text-sm py-1">
                     <span className="text-gray-700 dark:text-gray-200">{s.name}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-400 dark:text-gray-500">{s.weight_g}g</span>
+                      <span className="text-gray-400 dark:text-gray-400">{s.weight_g}g</span>
                       <button
                         onClick={() => handleDeleteServing(s.id)}
                         disabled={deleteServingSize.isPending}
@@ -433,9 +464,16 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
                   </button>
                 </div>
               </>
+            ) : (
+              <div className="text-sm text-gray-500 dark:text-gray-300">
+                Serving sizes can be added once the item has been created.
+              </div>
             )}
-
-            <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide pt-2">Grocery stores</div>
+        </>
+      )}
+      {section === "stores" && (
+        <>
+            <div className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide pt-2">Grocery stores</div>
             <div className="space-y-1">
               {(groceryStoresQuery.data ?? []).map((store) => (
                 <label key={store.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
@@ -470,20 +508,8 @@ export function ItemEditDialog({ itemId, onClose, prefill, onCreated, stacked }:
                 Add
               </button>
             </div>
-          </div>
-
-          <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-            {saveError && <div className="text-xs text-red-500 mb-2">{saveError}</div>}
-            <button
-              onClick={handleSave}
-              disabled={isSaving || !name.trim()}
-              className="w-full bg-blue-500 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-40 hover:bg-blue-600"
-            >
-              {isSaving ? "Saving..." : isCreating && createdItemId == null ? "Create" : "Save"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
+        </>
+      )}
+    </DialogShell>
   );
 }

@@ -26,7 +26,7 @@ export function SaveMealDialog({ defaultName, isPending, error, onSave, onCancel
           }}
         >
           <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-1">Save as meal</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+          <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">
             Saves these items so you can log them together again.
           </p>
           <input

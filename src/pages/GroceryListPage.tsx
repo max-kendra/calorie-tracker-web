@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GroceryListEntry } from "@/api/types";
 import {
+  useCompleteTrip,
   useCreateGroceryEntry,
   useCreatePlaceholderGroceryEntry,
   useCreateTrip,
@@ -17,6 +18,8 @@ import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { usdaFoodToPrefill, type ItemFormPrefill } from "@/lib/itemPrefill";
 import { ItemEditDialog } from "@/components/ItemEditDialog";
 import { UsdaSearchPanel } from "@/components/UsdaSearchPanel";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { CheckIcon, PlusIcon } from "@/components/icons";
 
 const ANY_STORE = "__any__";
 
@@ -83,7 +86,7 @@ function ResolvePlaceholderSearch({ entryId, onDone }: { entryId: number; onDone
             ))}
           {hasQuery && !itemsQuery.isFetching && results.length === 0 && (
             <div className="text-center py-2">
-              <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">No matches</div>
+              <div className="text-xs text-gray-400 dark:text-gray-400 mb-1">No matches</div>
               <button
                 onClick={() => setShowUsda(true)}
                 className="px-2 py-1 rounded bg-blue-500 text-white text-xs hover:bg-blue-600"
@@ -100,7 +103,7 @@ function ResolvePlaceholderSearch({ entryId, onDone }: { entryId: number; onDone
               Not finding it? Search USDA
             </button>
           )}
-          <button onClick={onDone} className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 mt-1">
+          <button onClick={onDone} className="text-xs text-gray-400 dark:text-gray-400 hover:text-gray-600 mt-1">
             Cancel
           </button>
         </>
@@ -124,18 +127,37 @@ function ResolvePlaceholderSearch({ entryId, onDone }: { entryId: number; onDone
 
 /** Adds to the pool - searches existing items first (same as every
  * other add-item entry point in the app), with a placeholder as the
- * explicit fallback rather than the only option (see design
- * discussion: previously this was a plain free-text field with no
- * connection to the item catalog at all). */
+ * explicit fallback rather than the only option. The input is a fixed
+ * element at the top of its panel; matches float below it as a dropdown
+ * over the list, so the input never moves however many results appear. */
 function AddToPoolSearch() {
   const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const itemsQuery = useItemSearch(query);
   const createEntry = useCreateGroceryEntry();
   const createPlaceholder = useCreatePlaceholderGroceryEntry();
 
   const trimmed = query.trim();
   const hasQuery = trimmed.length > 0;
-  const results = (itemsQuery.data ?? []).slice(0, 5);
+  const results = (itemsQuery.data ?? []).slice(0, 6);
+  const showDropdown = open && hasQuery;
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   function handleAddItem(itemId: number) {
     createEntry.mutate(itemId, { onSuccess: () => setQuery("") });
@@ -146,42 +168,48 @@ function AddToPoolSearch() {
     createPlaceholder.mutate(trimmed, { onSuccess: () => setQuery("") });
   }
 
+  const errorMessage = createEntry.isError
+    ? (createEntry.error as Error).message
+    : createPlaceholder.isError
+      ? (createPlaceholder.error as Error).message
+      : null;
+
   return (
-    <div className="mt-2">
+    <div ref={wrapperRef} className="relative mb-3 shrink-0">
       <input
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
         placeholder="Search your items to add..."
-        className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs"
+        className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
       />
-      {hasQuery && results.length > 0 && (
-        <div className="mt-1 border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
+      {showDropdown && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl max-h-80 overflow-y-auto">
           {results.map((item) => (
             <button
               key={item.item_id}
               onClick={() => handleAddItem(item.item_id)}
               disabled={createEntry.isPending}
-              className="w-full text-left px-2 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 disabled:opacity-40"
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600 border-b border-gray-100 dark:border-gray-600 disabled:opacity-40"
             >
               {item.brand ? `${item.name} (${item.brand})` : item.name}
             </button>
           ))}
+          {!itemsQuery.isFetching && results.length === 0 && (
+            <div className="px-3 py-2 text-xs text-gray-400 dark:text-gray-300">No matches</div>
+          )}
+          <button
+            onClick={handleAddPlaceholder}
+            disabled={createPlaceholder.isPending}
+            className="w-full text-left px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-40"
+          >
+            Add "{trimmed}" as a placeholder
+          </button>
+          {errorMessage && <div className="px-3 py-2 text-xs text-red-500">{errorMessage}</div>}
         </div>
-      )}
-      {hasQuery && (
-        <button
-          onClick={handleAddPlaceholder}
-          disabled={createPlaceholder.isPending}
-          className="w-full text-left mt-1 px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40"
-        >
-          {results.length === 0
-            ? `No matches - add "${trimmed}" as a placeholder`
-            : `Not what you're looking for? Add "${trimmed}" as a placeholder`}
-        </button>
-      )}
-      {createEntry.isError && <div className="text-xs text-red-500 mt-1">{(createEntry.error as Error).message}</div>}
-      {createPlaceholder.isError && (
-        <div className="text-xs text-red-500 mt-1">{(createPlaceholder.error as Error).message}</div>
       )}
     </div>
   );
@@ -213,7 +241,7 @@ function EntryCard({ entry, tinted = false, onDragStart, onDelete }: {
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm text-gray-800 dark:text-gray-100 truncate">{entry.item_name}</span>
-        <button onClick={() => onDelete(entry)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 text-sm shrink-0 px-1">
+        <button onClick={() => onDelete(entry)} className="text-gray-400 dark:text-gray-400 hover:text-red-500 text-sm shrink-0 px-1">
           &times;
         </button>
       </div>
@@ -232,7 +260,7 @@ function EntryCard({ entry, tinted = false, onDragStart, onDelete }: {
         onBlur={handleQuantityBlur}
         onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
         placeholder="Quantity (optional)"
-        className="w-full mt-1 bg-transparent border-none text-xs text-gray-500 dark:text-gray-400 placeholder:text-gray-300 dark:placeholder:text-gray-600 focus:outline-none"
+        className="w-full mt-1 bg-transparent border-none text-xs text-gray-500 dark:text-gray-300 placeholder:text-gray-300 dark:placeholder:text-gray-500 focus:outline-none"
       />
     </div>
   );
@@ -330,13 +358,15 @@ export function GroceryListPage() {
   const deleteEntry = useDeleteGroceryEntry();
   const createTrip = useCreateTrip();
   const deleteTrip = useDeleteTrip();
+  const completeTrip = useCompleteTrip();
 
   const [draggedEntryId, setDraggedEntryId] = useState<number | null>(null);
   const [showNewTrip, setShowNewTrip] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
+  const [completingTripId, setCompletingTripId] = useState<number | null>(null);
 
   if (entriesQuery.isLoading || tripsQuery.isLoading) {
-    return <div className="p-8 text-center text-gray-400 dark:text-gray-500">Loading...</div>;
+    return <div className="p-8 text-center text-gray-400 dark:text-gray-400">Loading...</div>;
   }
 
   const entries = entriesQuery.data ?? [];
@@ -396,12 +426,13 @@ export function GroceryListPage() {
           onDrop={(e) => handleDrop(e, null, null)}
           className={`${cardClass} flex flex-col min-h-0`}
         >
-          <h2 className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2 shrink-0">Not yet planned</h2>
+          <h2 className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide mb-2 shrink-0">Not yet planned</h2>
+          <AddToPoolSearch />
           <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-            {poolByStore.size === 0 && <div className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">Nothing here</div>}
+            {poolByStore.size === 0 && <div className="text-sm text-gray-400 dark:text-gray-400 py-4 text-center">Nothing here</div>}
             {Array.from(poolByStore.entries()).map(([key, bucket]) => (
               <div key={key} className="mb-3">
-                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{bucket.name}</div>
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-300 mb-1">{bucket.name}</div>
                 {bucket.entries.map((entry) => (
                   <EntryCard
                     key={entry.id}
@@ -413,25 +444,22 @@ export function GroceryListPage() {
               </div>
             ))}
           </div>
-          <div className="shrink-0">
-            <AddToPoolSearch />
-          </div>
         </div>
 
         <div className={`${cardClass} flex flex-col min-h-0 min-w-0`}>
           <div className="flex items-center justify-between mb-2 shrink-0">
-            <h2 className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Trips</h2>
+            <h2 className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide">Trips</h2>
             <button
               onClick={() => setShowNewTrip(true)}
               aria-label="New trip"
-              className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center justify-center text-gray-600 dark:text-gray-200 text-base leading-none"
+              className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center justify-center text-gray-600 dark:text-gray-200"
             >
-              +
+              <PlusIcon className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {trips.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">
+            <div className="flex-1 flex items-center justify-center text-sm text-gray-400 dark:text-gray-400">
               No trips yet - use + to plan one
             </div>
           ) : (
@@ -449,23 +477,34 @@ export function GroceryListPage() {
                     <div className="flex items-start justify-between mb-2 shrink-0">
                       <div>
                         <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">{trip.label || trip.date}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500">
+                        <div className="text-xs text-gray-400 dark:text-gray-400">
                           {trip.label && `${trip.date} - `}
                           {trip.store?.name ?? "Any store"}
                         </div>
                       </div>
-                      <button
-                        onClick={() => deleteTrip.mutate(trip.id)}
-                        className="text-gray-300 dark:text-gray-600 hover:text-red-500 text-sm px-1"
-                        aria-label="Delete trip"
-                      >
-                        &times;
-                      </button>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          onClick={() => setCompletingTripId(trip.id)}
+                          className="p-1 rounded text-gray-400 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          aria-label="Complete trip"
+                          title="Mark trip as complete"
+                        >
+                          <CheckIcon />
+                        </button>
+                        <button
+                          onClick={() => deleteTrip.mutate(trip.id)}
+                          className="text-gray-300 dark:text-gray-500 hover:text-red-500 text-sm px-1"
+                          aria-label="Delete trip (items return to the list)"
+                          title="Delete trip (items return to the list)"
+                        >
+                          &times;
+                        </button>
+                      </div>
                     </div>
 
                     <div className="flex-1 min-h-0 overflow-y-auto pr-1">
                       {tripEntries.length === 0 && (
-                        <div className="text-xs text-gray-400 dark:text-gray-500 py-4 text-center">Drag items here</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-400 py-4 text-center">Drag items here</div>
                       )}
                       {tripEntries.map((entry) => (
                         <EntryCard
@@ -484,6 +523,18 @@ export function GroceryListPage() {
           )}
         </div>
       </div>
+
+      {completingTripId != null && (
+        <ConfirmDialog
+          title="Complete this trip?"
+          message={`Everything planned for it (${entries.filter((e) => e.trip_id === completingTripId).length} items) is treated as bought and removed from the list.`}
+          confirmLabel="Complete"
+          isPending={completeTrip.isPending}
+          error={completeTrip.isError ? (completeTrip.error as Error).message : null}
+          onCancel={() => setCompletingTripId(null)}
+          onConfirm={() => completeTrip.mutate(completingTripId, { onSuccess: () => setCompletingTripId(null) })}
+        />
+      )}
 
       {showNewTrip && (
         <NewTripDialog

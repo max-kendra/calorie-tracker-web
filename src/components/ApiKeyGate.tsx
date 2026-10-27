@@ -19,7 +19,7 @@ export function ApiKeyGate({ children }: { children: ReactNode }) {
       <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-700">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 w-full max-w-sm">
           <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-1">Meal Tracker</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Enter your API key to continue.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">Enter your API key to continue.</p>
           <input
             type="password"
             value={input}

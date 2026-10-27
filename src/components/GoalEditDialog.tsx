@@ -148,7 +148,7 @@ export function GoalEditDialog({ goal, onClose }: GoalEditDialogProps) {
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start date</label>
+                <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">Start date</label>
                 <input
                   type="date"
                   value={startDate}
@@ -157,7 +157,7 @@ export function GoalEditDialog({ goal, onClose }: GoalEditDialogProps) {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">End date</label>
+                <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">End date</label>
                 <input
                   type="date"
                   value={endDate}
@@ -173,7 +173,7 @@ export function GoalEditDialog({ goal, onClose }: GoalEditDialogProps) {
             </label>
 
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Calories</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">Calories</label>
               <input
                 type="number"
                 step="any"
@@ -184,7 +184,7 @@ export function GoalEditDialog({ goal, onClose }: GoalEditDialogProps) {
             </div>
 
             <div className="flex items-baseline justify-between pt-1">
-              <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Macro ratio</div>
+              <div className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide">Macro ratio</div>
               <div className="flex gap-1">
                 {MACRO_RATIO_PRESETS.map((preset) => (
                   <button
@@ -200,7 +200,7 @@ export function GoalEditDialog({ goal, onClose }: GoalEditDialogProps) {
 
             <MacroRatioPie ratio={macroRatio} />
 
-            <div className={`text-xs text-right ${ratioValid ? "text-gray-400 dark:text-gray-500" : "text-red-500"}`}>
+            <div className={`text-xs text-right ${ratioValid ? "text-gray-400 dark:text-gray-400" : "text-red-500"}`}>
               {ratioSum}% {ratioValid ? "" : "(must be 100%)"}
             </div>
 
@@ -216,7 +216,7 @@ export function GoalEditDialog({ goal, onClose }: GoalEditDialogProps) {
                 >
                   &minus;
                 </button>
-                <span className="text-xs text-gray-500 dark:text-gray-400 w-24 text-center shrink-0">
+                <span className="text-xs text-gray-500 dark:text-gray-300 w-24 text-center shrink-0">
                   {macroRatio[key]}% - {derivedGrams[key]}g
                 </span>
                 <button
@@ -230,15 +230,15 @@ export function GoalEditDialog({ goal, onClose }: GoalEditDialogProps) {
             ))}
 
             <div className="flex items-baseline justify-between pt-2">
-              <div className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">Meal split (% of calories)</div>
-              <div className={`text-xs font-medium ${splitsValid ? "text-gray-400 dark:text-gray-500" : "text-red-500"}`}>
+              <div className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide">Meal split (% of calories)</div>
+              <div className={`text-xs font-medium ${splitsValid ? "text-gray-400 dark:text-gray-400" : "text-red-500"}`}>
                 {splitSum}% {splitsValid ? "" : "(must be 100%)"}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {MEAL_TYPES.map((mt) => (
                 <div key={mt}>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{MEAL_LABELS[mt]}</label>
+                  <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">{MEAL_LABELS[mt]}</label>
                   <input
                     type="number"
                     step="any"

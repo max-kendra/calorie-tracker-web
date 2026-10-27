@@ -16,13 +16,17 @@ function statusOf(goal: Goal, todayIso: string): Status {
 const STATUS_LABELS: Record<Status, string> = { current: "Current", future: "Upcoming", past: "Past" };
 const STATUS_ORDER: Status[] = ["current", "future", "past"];
 
+function whole(value: string): number {
+  return Math.round(parseFloat(value));
+}
+
 export function GoalsPage() {
   const goalsQuery = useGoalsList();
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [showDialog, setShowDialog] = useState(false);
 
   if (goalsQuery.isLoading) {
-    return <div className="p-8 text-center text-gray-400 dark:text-gray-500">Loading...</div>;
+    return <div className="p-8 text-center text-gray-400 dark:text-gray-400">Loading...</div>;
   }
   if (goalsQuery.isError) {
     return <div className="p-8 text-center text-red-500">Couldn't load goals: {(goalsQuery.error as Error).message}</div>;
@@ -53,7 +57,7 @@ export function GoalsPage() {
       {STATUS_ORDER.map((status) =>
         grouped[status].length === 0 ? null : (
           <div key={status} className="mb-4">
-            <h2 className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">{STATUS_LABELS[status]}</h2>
+            <h2 className="text-xs text-gray-400 dark:text-gray-400 uppercase tracking-wide mb-2">{STATUS_LABELS[status]}</h2>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
               {grouped[status].map((goal) => (
                 <button
@@ -69,16 +73,16 @@ export function GoalsPage() {
                   <span className="text-sm text-gray-800 dark:text-gray-100">
                     {goal.start_date} - {goal.end_date ?? "Ongoing"}
                   </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 space-x-1">
-                    <span>{goal.kcal_target} Cal</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-300 space-x-1">
+                    <span>{whole(goal.kcal_target)} Cal</span>
                     <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
-                    <span style={{ color: MACRO_COLORS.protein }}>{goal.protein_g_target}P</span>
+                    <span style={{ color: MACRO_COLORS.protein }}>{whole(goal.protein_g_target)}P</span>
                     <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
-                    <span style={{ color: MACRO_COLORS.fat }}>{goal.fat_g_target}F</span>
+                    <span style={{ color: MACRO_COLORS.fat }}>{whole(goal.fat_g_target)}F</span>
                     <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
-                    <span style={{ color: MACRO_COLORS.carbs }}>{goal.carbs_g_target}C</span>
+                    <span style={{ color: MACRO_COLORS.carbs }}>{whole(goal.carbs_g_target)}C</span>
                     <span className="text-gray-300 dark:text-gray-600">{"\u00b7"}</span>
-                    <span style={{ color: MACRO_COLORS.fiber }}>{goal.fiber_g_target}Fi</span>
+                    <span style={{ color: MACRO_COLORS.fiber }}>{whole(goal.fiber_g_target)}Fi</span>
                   </span>
                 </button>
               ))}
@@ -88,7 +92,7 @@ export function GoalsPage() {
       )}
 
       {goals.length === 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 text-center text-gray-400 dark:text-gray-500 text-sm">No goals yet</div>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 text-center text-gray-400 dark:text-gray-400 text-sm">No goals yet</div>
       )}
 
       {showDialog && <GoalEditDialog goal={editingGoal} onClose={() => setShowDialog(false)} />}

@@ -5,4 +5,27 @@
 body {
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  @apply text-gray-900 dark:text-gray-100;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+
+  /* Dark-mode defaults for every text-like field, so a field never ends
+     up as a bright white box just because one of its classes was
+     forgotten. The extra :not() terms raise specificity above the older
+     per-component dark: classes, which keeps all fields consistent. */
+  .dark :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+    background-color: theme("colors.gray.900");
+    color: theme("colors.gray.100");
+    border-color: theme("colors.gray.600");
+  }
+  .dark :is(input, textarea)::placeholder {
+    color: theme("colors.gray.500");
+  }
 }
