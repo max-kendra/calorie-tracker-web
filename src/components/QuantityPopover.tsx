@@ -33,12 +33,15 @@ export function QuantityPopover({ log, anchor, onClose }: QuantityPopoverProps) 
   const { refs, floatingStyles } = useFloating({
     elements: { reference: anchor },
     placement: "bottom-start",
+    strategy: "fixed",
     middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 })],
     whileElementsMounted: autoUpdate,
   });
 
   useEffect(() => {
-    inputRef.current?.focus();
+    // The popover is still at its pre-positioned spot when this runs, so
+    // a normal focus() would scroll the page toward it.
+    inputRef.current?.focus({ preventScroll: true });
     inputRef.current?.select();
   }, []);
 
@@ -119,24 +122,22 @@ export function QuantityPopover({ log, anchor, onClose }: QuantityPopoverProps) 
         <button onClick={() => nudge(1)} className={stepperClass} aria-label="Increase">
           +
         </button>
-        <div className="flex-1 min-w-0">
-          {isRecipeLog ? (
-            <span className="text-sm text-gray-500 dark:text-gray-300 pl-1">servings</span>
-          ) : (
-            log.item_id != null && (
-              <ServingPicker
-                compact
-                itemId={log.item_id}
-                selectedServingSizeId={servingSizeId}
-                onSelect={(id, convert) => {
-                  setServingSizeId(id);
-                  setQuantityInput(convert);
-                }}
-              />
-            )
-          )}
-        </div>
+        {isRecipeLog && <span className="text-sm text-gray-500 dark:text-gray-300 pl-1">servings</span>}
       </div>
+
+      {!isRecipeLog && log.item_id != null && (
+        <div className="mt-2">
+          <ServingPicker
+            compact
+            itemId={log.item_id}
+            selectedServingSizeId={servingSizeId}
+            onSelect={(id, convert) => {
+              setServingSizeId(id);
+              setQuantityInput(convert);
+            }}
+          />
+        </div>
+      )}
 
       <div className="mt-2.5 text-xs flex flex-wrap gap-x-2 gap-y-0.5 items-baseline text-gray-500 dark:text-gray-300">
         <span className="font-medium text-gray-800 dark:text-gray-100">{scaled(log.kcal_logged)} Cal</span>
