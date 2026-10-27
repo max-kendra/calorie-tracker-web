@@ -22,6 +22,7 @@ import { WeekMacroSummary } from "@/components/WeekMacroSummary";
 import { MealDetailPanel } from "@/components/MealDetailPanel";
 import { ItemDetailModal } from "@/components/ItemDetailModal";
 import { QuantityEditDialog } from "@/components/QuantityEditDialog";
+import { QuantityPopover } from "@/components/QuantityPopover";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { hasOpenDialog } from "@/lib/useEscapeToClose";
 import { WeekPickerDialog } from "@/components/WeekPickerDialog";
@@ -64,7 +65,7 @@ export function WeekView() {
 
   const [selectedMeal, setSelectedMeal] = useState<{ date: string; mealType: MealType } | null>(null);
   const [viewingLog, setViewingLog] = useState<Log | null>(null);
-  const [quantityLog, setQuantityLog] = useState<Log | null>(null);
+  const [quantityTarget, setQuantityTarget] = useState<{ log: Log; anchor: HTMLElement } | null>(null);
   const [deletingLog, setDeletingLog] = useState<Log | null>(null);
   const [addingTo, setAddingTo] = useState<{ date: string; mealType: MealType } | null>(null);
   const [showWeekPicker, setShowWeekPicker] = useState(false);
@@ -226,7 +227,9 @@ export function WeekView() {
   const targetTotals = sumGoalTargetsForWeek(goals, dates);
 
   const liveViewingLog = viewingLog ? logs.find((l) => l.id === viewingLog.id) ?? null : null;
-  const liveQuantityLog = quantityLog ? logs.find((l) => l.id === quantityLog.id) ?? null : null;
+  const liveQuantityLog = quantityTarget ? logs.find((l) => l.id === quantityTarget.log.id) ?? null : null;
+  // A floating popover suits a mouse; touch keeps the centered dialog.
+  const popoverQuantity = quantityTarget != null && !window.matchMedia("(pointer: coarse)").matches;
   const selectedMealGoal = selectedMeal ? resolveGoalForDate(goals, selectedMeal.date) : undefined;
 
   return (
@@ -292,7 +295,7 @@ export function WeekView() {
             goal={resolveGoalForDate(goals, date)}
             onMealClick={(d, mealType) => setSelectedMeal({ date: d, mealType })}
             onOpenDetail={setViewingLog}
-            onQuantityClick={setQuantityLog}
+            onQuantityClick={(log, anchor) => setQuantityTarget({ log, anchor })}
             onDelete={setDeletingLog}
             onAddToGroceryList={handleAddToGroceryList}
             onAddItem={(d, mealType) => setAddingTo({ date: d, mealType })}
@@ -352,7 +355,7 @@ export function WeekView() {
           goal={selectedMealGoal}
           onClose={() => setSelectedMeal(null)}
           onOpenDetail={setViewingLog}
-          onQuantityClick={setQuantityLog}
+          onQuantityClick={(log, anchor) => setQuantityTarget({ log, anchor })}
           onDelete={setDeletingLog}
           onAddToGroceryList={handleAddToGroceryList}
           onAddItem={(d, mealType) => setAddingTo({ date: d, mealType })}
@@ -362,7 +365,10 @@ export function WeekView() {
 
       {liveViewingLog && <ItemDetailModal log={liveViewingLog} onClose={() => setViewingLog(null)} />}
 
-      {liveQuantityLog && <QuantityEditDialog log={liveQuantityLog} onClose={() => setQuantityLog(null)} />}
+      {liveQuantityLog && quantityTarget && popoverQuantity && (
+        <QuantityPopover key={liveQuantityLog.id} log={liveQuantityLog} anchor={quantityTarget.anchor} onClose={() => setQuantityTarget(null)} />
+      )}
+      {liveQuantityLog && !popoverQuantity && <QuantityEditDialog log={liveQuantityLog} onClose={() => setQuantityTarget(null)} />}
 
       {deletingLog && (
         <ConfirmDialog

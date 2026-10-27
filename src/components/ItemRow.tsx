@@ -31,7 +31,7 @@ function TrashIcon() {
 interface ItemRowProps {
   log: Log;
   onOpenDetail: (log: Log) => void;
-  onQuantityClick: (log: Log) => void;
+  onQuantityClick: (log: Log, anchor: HTMLElement) => void;
   onDelete: (log: Log) => void;
   /** Adds this row's underlying item to the grocery list. Replaces the
    * old pencil icon (see design discussion) - that became redundant
@@ -105,7 +105,7 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onQuantityClick(log);
+                onQuantityClick(log, e.currentTarget);
               }}
               className="hover:text-blue-600 hover:underline text-left"
             >

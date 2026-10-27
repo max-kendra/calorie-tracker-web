@@ -15,7 +15,7 @@ interface DayColumnProps {
   goal: Goal | undefined;
   onMealClick: (date: string, mealType: MealType) => void;
   onOpenDetail: (log: Log) => void;
-  onQuantityClick: (log: Log) => void;
+  onQuantityClick: (log: Log, anchor: HTMLElement) => void;
   onDelete: (log: Log) => void;
   onAddToGroceryList: (log: Log) => void;
   onAddItem: (date: string, mealType: MealType) => void;

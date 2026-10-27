@@ -17,6 +17,8 @@ interface ServingPickerProps {
    * a 30g serving becomes 60), so the amount carries over instead of
    * going back to whatever number was typed before. */
   onSelect: (servingSizeId: number | null, convertQuantity: QuantityConverter) => void;
+  /** Label-less, tighter variant for inline popovers. */
+  compact?: boolean;
 }
 
 const GRAMS_SENTINEL = "grams";
@@ -31,7 +33,7 @@ const NEW_SERVING_SENTINEL = "new";
  * "for the serving/quantity edits, you should also be able to change
  * the serving type... a little dropdown that lets you change it from
  * grams to servings and also create new servings inside if needed"). */
-export function ServingPicker({ itemId, selectedServingSizeId, onSelect }: ServingPickerProps) {
+export function ServingPicker({ itemId, selectedServingSizeId, onSelect, compact = false }: ServingPickerProps) {
   const itemDetailQuery = useItemDetail(itemId);
   const createServingSize = useCreateServingSize();
 
@@ -82,11 +84,11 @@ export function ServingPicker({ itemId, selectedServingSizeId, onSelect }: Servi
 
   return (
     <div>
-      <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">Serving</label>
+      {!compact && <label className="block text-xs text-gray-500 dark:text-gray-300 mb-1">Serving</label>}
       <select
         value={selectValue}
         onChange={(e) => handleSelectChange(e.target.value)}
-        className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm mb-2"
+        className={`w-full border border-gray-200 dark:border-gray-600 rounded-lg text-sm ${compact ? "px-2 py-1.5" : "px-3 py-2 mb-2"}`}
       >
         <option value={GRAMS_SENTINEL}>Grams (g)</option>
         {servingSizes.map((s) => (
@@ -98,7 +100,7 @@ export function ServingPicker({ itemId, selectedServingSizeId, onSelect }: Servi
       </select>
 
       {isCreatingNew && (
-        <div className="mb-2 space-y-2">
+        <div className="mt-2 mb-2 space-y-2">
           <div className="flex gap-2">
             <input
               type="text"
