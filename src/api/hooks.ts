@@ -120,6 +120,18 @@ export function useCreateLog() {
   });
 }
 
+export function useCopyLogs() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { log_ids: number[]; target_date: string; meal_type?: MealType; move: boolean }) =>
+      api.post<Log[]>("/logs/copy", payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["logs"] });
+      queryClient.invalidateQueries({ queryKey: ["daily-summary"] });
+    },
+  });
+}
+
 export function useItemsList() {
   return useQuery({
     queryKey: ["items-list"],

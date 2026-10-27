@@ -1,7 +1,18 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { useSearchParams } from "react-router-dom";
 import type { Log, MealType } from "@/api/types";
-import { useCreateGroceryEntry, useCreateLog, useDeleteLog, useGoalsList, useLogsRange } from "@/api/hooks";
+import { useCopyLogs, useCreateGroceryEntry, useDeleteLog, useGoalsList, useLogsRange } from "@/api/hooks";
 import { addDays, formatWeekRangeLabel, fromIsoDate, isoWeekNumber, startOfWeek, toIsoDate, weekDates } from "@/lib/dates";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { resolveGoalForDate, sumGoalTargetsForWeek } from "@/lib/goals";
@@ -14,6 +25,9 @@ import { QuantityEditDialog } from "@/components/QuantityEditDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { WeekPickerDialog } from "@/components/WeekPickerDialog";
 import { AddItemDialog } from "@/components/AddItemDialog";
+import { CopyToDialog } from "@/components/CopyToDialog";
+import { CopyIcon } from "@/components/icons";
+import { DragContext, describePayload, isSameSpot, logsForPayload, type DragPayload } from "@/lib/dragState";
 
 const NAV_BUTTON_CLASS =
   "w-9 h-9 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-200 flex items-center justify-center";
@@ -53,18 +67,41 @@ export function WeekView() {
   const [deletingLog, setDeletingLog] = useState<Log | null>(null);
   const [addingTo, setAddingTo] = useState<{ date: string; mealType: MealType } | null>(null);
   const [showWeekPicker, setShowWeekPicker] = useState(false);
-  const [draggedLog, setDraggedLog] = useState<Log | null>(null);
-  const [draggedMeal, setDraggedMeal] = useState<{ date: string; mealType: MealType } | null>(null);
+  const [active, setActive] = useState<DragPayload | null>(null);
+  const [copy, setCopy] = useState(false);
+  const copyRef = useRef(false);
+  const [copyDialog, setCopyDialog] = useState<{
+    payload: DragPayload;
+    initialDate?: string;
+    initialMeal?: MealType;
+  } | null>(null);
 
-  function handleLogDragStart(log: Log) {
-    setDraggedMeal(null);
-    setDraggedLog(log);
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+  );
+
+  function updateCopy(value: boolean) {
+    copyRef.current = value;
+    setCopy(value);
   }
 
-  function handleMealDragStart(date: string, mealType: MealType) {
-    setDraggedLog(null);
-    setDraggedMeal({ date, mealType });
-  }
+  // Ctrl (or Option on a Mac, where Ctrl-click is a right-click) is read
+  // live so it can be pressed or released mid-drag.
+  useEffect(() => {
+    if (!active) return;
+    const sync = (e: KeyboardEvent | MouseEvent) => updateCopy(e.ctrlKey || e.altKey);
+    window.addEventListener("keydown", sync);
+    window.addEventListener("keyup", sync);
+    window.addEventListener("mousemove", sync);
+    document.body.style.cursor = "grabbing";
+    return () => {
+      window.removeEventListener("keydown", sync);
+      window.removeEventListener("keyup", sync);
+      window.removeEventListener("mousemove", sync);
+      document.body.style.cursor = "";
+    };
+  }, [active]);
 
   const logsQuery = useLogsRange(startDate, endDate);
   // Full history, not just "the active one" - a week can span more
@@ -74,7 +111,7 @@ export function WeekView() {
   const goalsQuery = useGoalsList();
   const deleteLog = useDeleteLog();
   const createGroceryEntry = useCreateGroceryEntry();
-  const createLog = useCreateLog();
+  const copyLogs = useCopyLogs();
 
   function handleAddToGroceryList(log: Log) {
     if (log.item_id == null) return;
@@ -97,54 +134,36 @@ export function WeekView() {
 
   const logs = logsQuery.data ?? [];
 
-  /** "Move" is create-at-the-new-spot then delete-the-old (see design
-   * discussion) - LogUpdate deliberately doesn't support changing
-   * date/meal_type at all ("that's delete and re-log, not edit" - see
-   * its own docstring), so this respects that existing design rather
-   * than relaxing it. "Copy" is just the create half, leaving the
-   * original untouched. Handles both a single dragged log and a whole
-   * dragged meal (every log sharing its date+mealType) - whichever of
-   * draggedLog/draggedMeal is actually set. Dropping a single item
-   * back onto its own exact spot is a no-op UNLESS copying (see
-   * design discussion: "can we duplicate a logged item in the same
-   * meal on the same day" - a same-spot drop is precisely how that
-   * works, since there's nowhere else to indicate "right here,
-   * again"). Whole-meal drops don't have an equivalent same-spot
-   * duplicate case asked for, so that one stays guarded either way. */
-  function duplicateOrMoveLog(log: Log, targetDate: string, targetMealType: MealType, isCopy: boolean) {
-    createLog.mutate(
-      {
-        date: targetDate,
-        meal_type: targetMealType,
-        item_id: log.item_id ?? undefined,
-        recipe_id: log.recipe_id ?? undefined,
-        quantity: parseFloat(log.quantity),
-        serving_size_id: log.serving_size_id,
-      },
-      {
-        onSuccess: () => {
-          if (!isCopy) deleteLog.mutate(log.id);
-        },
-      },
-    );
+  function handleDragStart(event: DragStartEvent) {
+    setActive(event.active.data.current as DragPayload);
+    const e = event.activatorEvent as MouseEvent;
+    updateCopy(!!(e.ctrlKey || e.altKey));
   }
 
-  function handleDropLog(targetDate: string, targetMealType: MealType, isCopy: boolean) {
-    const meal = draggedMeal;
-    const log = draggedLog;
-    setDraggedMeal(null);
-    setDraggedLog(null);
+  function handleDragEnd(event: DragEndEvent) {
+    const payload = event.active.data.current as DragPayload;
+    const isCopy = copyRef.current;
+    const touch = event.activatorEvent.type.startsWith("touch");
+    setActive(null);
+    updateCopy(false);
 
-    if (meal) {
-      if (meal.date === targetDate && meal.mealType === targetMealType) return;
-      const mealLogs = logs.filter((l) => l.date === meal.date && l.meal_type === meal.mealType);
-      mealLogs.forEach((l) => duplicateOrMoveLog(l, targetDate, targetMealType, isCopy));
+    const target = event.over?.data.current as { date: string; mealType: MealType | null } | undefined;
+    if (!target) return;
+    if (isSameSpot(payload, target.date, target.mealType) && !isCopy) return;
+
+    // Touch has no modifier key, so let the dialog ask copy vs. move.
+    if (touch) {
+      setCopyDialog({ payload, initialDate: target.date, initialMeal: target.mealType ?? undefined });
       return;
     }
-
-    if (!log) return;
-    if (log.date === targetDate && log.meal_type === targetMealType && !isCopy) return;
-    duplicateOrMoveLog(log, targetDate, targetMealType, isCopy);
+    const ids = logsForPayload(payload, logs).map((l) => l.id);
+    if (ids.length === 0) return;
+    copyLogs.mutate({
+      log_ids: ids,
+      target_date: target.date,
+      meal_type: payload.kind === "day" ? undefined : target.mealType ?? undefined,
+      move: !isCopy,
+    });
   }
 
   const goals = goalsQuery.data ?? [];
@@ -197,6 +216,17 @@ export function WeekView() {
           viewports, but DayColumn's min-width is now small enough that
           7 columns should fit without scrolling on ordinary desktop
           widths - see DayColumn's own comment. */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => {
+          setActive(null);
+          updateCopy(false);
+        }}
+      >
+      <DragContext.Provider value={{ active, copy }}>
       <div className="flex gap-2 overflow-x-auto px-1 pt-1 pb-4">
         {dates.map((date) => (
           <DayColumn
@@ -210,12 +240,26 @@ export function WeekView() {
             onDelete={setDeletingLog}
             onAddToGroceryList={handleAddToGroceryList}
             onAddItem={(d, mealType) => setAddingTo({ date: d, mealType })}
-            onDragStart={handleLogDragStart}
-            onMealDragStart={handleMealDragStart}
-            onDropLog={handleDropLog}
+            draggable
+            onCopyTo={(payload) => setCopyDialog({ payload })}
           />
         ))}
       </div>
+      </DragContext.Provider>
+      <DragOverlay dropAnimation={null}>
+        {active && <DragPreview payload={active} count={logsForPayload(active, logs).length} copy={copy} />}
+      </DragOverlay>
+      </DndContext>
+
+      {copyDialog && (
+        <CopyToDialog
+          payload={copyDialog.payload}
+          logIds={logsForPayload(copyDialog.payload, logs).map((l) => l.id)}
+          initialDate={copyDialog.initialDate}
+          initialMeal={copyDialog.initialMeal}
+          onClose={() => setCopyDialog(null)}
+        />
+      )}
 
       {selectedMeal && (
         <MealDetailPanel
@@ -258,6 +302,31 @@ export function WeekView() {
           onClose={() => setShowWeekPicker(false)}
         />
       )}
+    </div>
+  );
+}
+
+function DragPreview({ payload, count, copy }: { payload: DragPayload; count: number; copy: boolean }) {
+  const { title, subtitle } = describePayload(payload, count);
+  return (
+    <div className="relative w-56 cursor-grabbing">
+      {copy && <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-xl bg-emerald-200 dark:bg-emerald-900" />}
+      <div
+        className={`relative rounded-xl border px-3 py-2 shadow-xl bg-white dark:bg-gray-800 ${
+          copy ? "border-emerald-400" : "border-gray-200 dark:border-gray-600"
+        }`}
+      >
+        <div className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{title}</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{subtitle}</div>
+        <div
+          className={`absolute -top-2 -right-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium text-white ${
+            copy ? "bg-emerald-500" : "bg-blue-500"
+          }`}
+        >
+          {copy && <CopyIcon className="w-3 h-3" />}
+          {copy ? "Copy" : "Move"}
+        </div>
+      </div>
     </div>
   );
 }

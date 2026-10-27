@@ -1,4 +1,8 @@
+import { useContext } from "react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { Goal, Log, MealType } from "@/api/types";
+import { CopyIcon } from "./icons";
+import { DragContext, isSameSpot, type DragPayload } from "@/lib/dragState";
 import { MEAL_TYPES, sumTotals } from "@/lib/macros";
 import { isToday, shortDateLabel, weekdayLabel } from "@/lib/dates";
 import { parseDecimal } from "@/lib/format";
@@ -15,9 +19,8 @@ interface DayColumnProps {
   onDelete: (log: Log) => void;
   onAddToGroceryList: (log: Log) => void;
   onAddItem: (date: string, mealType: MealType) => void;
-  onDragStart?: (log: Log) => void;
-  onMealDragStart?: (date: string, mealType: MealType) => void;
-  onDropLog?: (date: string, mealType: MealType, isCopy: boolean) => void;
+  draggable?: boolean;
+  onCopyTo?: (payload: DragPayload) => void;
 }
 
 export function DayColumn({
@@ -30,14 +33,17 @@ export function DayColumn({
   onDelete,
   onAddToGroceryList,
   onAddItem,
-  onDragStart,
-  onMealDragStart,
-  onDropLog,
+  draggable = false,
+  onCopyTo,
 }: DayColumnProps) {
   const allLogs = MEAL_TYPES.flatMap((meal) => logsByMeal[meal]);
   const dayTotals = sumTotals(allLogs);
   const kcalGoal = goal ? Math.round(parseDecimal(goal.kcal_target)) : undefined;
   const today = isToday(date);
+  const { active, copy } = useContext(DragContext);
+  const drag = useDraggable({ id: `day:${date}`, data: { kind: "day", date }, disabled: !draggable || allLogs.length === 0 });
+  const drop = useDroppable({ id: `dropday:${date}`, data: { date, mealType: null }, disabled: active?.kind !== "day" });
+  const showDrop = drop.isOver && active?.kind === "day" && !(isSameSpot(active, date, null) && !copy);
 
   return (
     // 130px, not 220px - 7 columns at 220px needed ~1620px total width
@@ -45,12 +51,37 @@ export function DayColumn({
     // fairly wide laptop screens (see design discussion: "the last day
     // gets cut off and you need to scroll"). 130px keeps this
     // comfortable down to something like a 1280px-wide window.
-    <div className={`flex flex-col min-w-[130px] flex-1 rounded-xl ${today ? "ring-2 ring-blue-400" : ""}`}>
-      <div className="px-3 py-2 bg-white dark:bg-gray-800 rounded-t-xl border-b border-gray-100 dark:border-gray-700">
+    <div
+      ref={drop.setNodeRef}
+      className={`relative flex flex-col min-w-[130px] flex-1 rounded-xl transition ${
+        showDrop ? (copy ? "ring-2 ring-emerald-400" : "ring-2 ring-blue-400") : today ? "ring-2 ring-blue-400" : ""
+      }`}
+    >
+      {showDrop && (
+        <div className="absolute inset-x-0 top-16 z-10 flex justify-center pointer-events-none">
+          <span className={`text-xs font-medium px-3 py-1 rounded-full text-white shadow ${copy ? "bg-emerald-500" : "bg-blue-500"}`}>
+            {copy ? "Copy whole day here" : "Move whole day here"}
+          </span>
+        </div>
+      )}
+      <div
+        ref={drag.setNodeRef}
+        {...(draggable ? drag.listeners : {})}
+        className="group/day px-3 py-2 bg-white dark:bg-gray-800 rounded-t-xl border-b border-gray-100 dark:border-gray-700"
+      >
         <div className="flex items-baseline justify-between">
           <span className={`text-sm font-semibold ${today ? "text-blue-600 dark:text-blue-400" : "text-gray-800 dark:text-gray-100"}`}>
             {weekdayLabel(date)} <span className="font-normal text-gray-400 dark:text-gray-400">{shortDateLabel(date)}</span>
           </span>
+          {onCopyTo && allLogs.length > 0 && (
+            <button
+              onClick={() => onCopyTo({ kind: "day", date })}
+              aria-label="Copy day to..."
+              className="p-0.5 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 opacity-0 group-hover/day:opacity-100 focus:opacity-100 transition"
+            >
+              <CopyIcon className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
         <div className="text-xs mt-0.5 space-x-1">
           <span className="text-gray-500 dark:text-gray-300">
@@ -94,9 +125,8 @@ export function DayColumn({
               onDelete={onDelete}
               onAddToGroceryList={onAddToGroceryList}
               onAddItem={onAddItem}
-              onDragStart={onDragStart}
-              onMealDragStart={onMealDragStart}
-              onDropLog={onDropLog}
+              draggable={draggable}
+              onCopyTo={onCopyTo}
             />
           );
         })}

@@ -1,4 +1,8 @@
+import { useContext } from "react";
+import { useDraggable } from "@dnd-kit/core";
 import type { Log } from "@/api/types";
+import { CopyIcon } from "./icons";
+import { DragContext, isLogInDrag } from "@/lib/dragState";
 import { logDisplayName, logQuantityLabel } from "@/lib/macros";
 import { MACRO_COLORS } from "@/lib/colors";
 
@@ -36,14 +40,20 @@ interface ItemRowProps {
    * pencil with nothing left to do that another entry point didn't
    * already cover. */
   onAddToGroceryList: (log: Log) => void;
-  /** Drag this log to another day/meal to move it there - see design
-   * discussion. Optional so ItemRow can still be used anywhere
-   * dragging wouldn't make sense without every caller needing to wire
-   * it up. */
-  onDragStart?: (log: Log) => void;
+  /** Enables dragging this row to another day/meal. */
+  draggable?: boolean;
+  onCopyTo?: (log: Log) => void;
 }
 
-export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToGroceryList, onDragStart }: ItemRowProps) {
+export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToGroceryList, draggable = false, onCopyTo }: ItemRowProps) {
+  const { active, copy } = useContext(DragContext);
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: `log:${log.id}`,
+    data: { kind: "log", log },
+    disabled: !draggable,
+  });
+  const faded = !copy && isLogInDrag(active, log);
+
   // Recipe logs have no single catalog item to add - hide the icon
   // entirely rather than trying to make it do something more
   // elaborate (add every ingredient? unclear what the user would even
@@ -51,15 +61,16 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
   const canAddToGroceryList = log.item_id != null;
 
   return (
-    <div className="group relative py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+    <div className={`group relative py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-opacity ${faded ? "opacity-40" : ""}`}>
       <div
+        ref={setNodeRef}
+        {...(draggable ? listeners : {})}
+        {...(draggable ? attributes : {})}
         role="button"
         tabIndex={0}
-        draggable={!!onDragStart}
-        onDragStart={onDragStart ? () => onDragStart(log) : undefined}
         onClick={() => onOpenDetail(log)}
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpenDetail(log)}
-        className={`cursor-pointer rounded px-1 -mx-1 hover:bg-gray-50 dark:hover:bg-gray-700 pr-14 flex items-center gap-2 ${onDragStart ? "active:cursor-grabbing" : ""}`}
+        className={`cursor-pointer rounded px-1 -mx-1 hover:bg-gray-50 dark:hover:bg-gray-700 pr-14 flex items-center gap-2 ${draggable ? "active:cursor-grabbing" : ""}`}
       >
         {log.image_path ? (
           <img src={`/${log.image_path}`} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
@@ -93,7 +104,7 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
           </div>
         </div>
       </div>
-      <div className="absolute right-1 top-1.5 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
+      <div className="absolute right-1 top-1.5 flex gap-1 rounded bg-white/90 dark:bg-gray-800/90 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
         {canAddToGroceryList && (
           <button
             onClick={(e) => {
@@ -104,6 +115,18 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
             className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-300"
           >
             <PlusIcon />
+          </button>
+        )}
+        {onCopyTo && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopyTo(log);
+            }}
+            aria-label="Copy to..."
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-300"
+          >
+            <CopyIcon />
           </button>
         )}
         <button
