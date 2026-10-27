@@ -17,7 +17,7 @@ export function GlobalCreateButton() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [creating, setCreating] = useState<CreateTarget | null>(null);
 
-  useEscapeToClose(() => setMenuOpen(false));
+  useEscapeToClose(() => setMenuOpen(false), menuOpen);
 
   function openCreate(target: CreateTarget) {
     setMenuOpen(false);

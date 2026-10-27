@@ -6,6 +6,8 @@ import { shortDateLabel, weekdayLabel } from "@/lib/dates";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
 import { MacroBar } from "./MacroBar";
 import { ItemRow } from "./ItemRow";
+import { CopyIcon } from "./icons";
+import type { DragPayload } from "@/lib/dragState";
 import { SaveMealDialog } from "./SaveMealDialog";
 import { useSaveMeal } from "@/api/hooks";
 
@@ -20,6 +22,7 @@ interface MealDetailPanelProps {
   onDelete: (log: Log) => void;
   onAddToGroceryList: (log: Log) => void;
   onAddItem: (date: string, mealType: MealType) => void;
+  onCopyTo?: (payload: DragPayload) => void;
 }
 
 export function MealDetailPanel({
@@ -33,6 +36,7 @@ export function MealDetailPanel({
   onDelete,
   onAddToGroceryList,
   onAddItem,
+  onCopyTo,
 }: MealDetailPanelProps) {
   useEscapeToClose(onClose);
   const totals = sumTotals(logs);
@@ -62,6 +66,16 @@ export function MealDetailPanel({
               </div>
               <div className="flex items-center gap-1">
                 <h2 className="text-lg font-semibold text-gray-800">{MEAL_LABELS[mealType]}</h2>
+                {onCopyTo && logs.length > 0 && (
+                  <button
+                    onClick={() => onCopyTo({ kind: "meal", date, mealType })}
+                    title="Copy meal to..."
+                    aria-label="Copy meal to..."
+                    className="text-gray-600 hover:text-gray-900 p-0.5"
+                  >
+                    <CopyIcon className="w-[18px] h-[18px]" />
+                  </button>
+                )}
                 {savable.length > 0 && (
                   <button
                     onClick={() => setSavingMeal(true)}
@@ -100,7 +114,7 @@ export function MealDetailPanel({
 
         <div className="flex-1 overflow-y-auto p-4">
           {logs.map((log) => (
-            <ItemRow key={log.id} log={log} onOpenDetail={onOpenDetail} onQuantityClick={onQuantityClick} onDelete={onDelete} onAddToGroceryList={onAddToGroceryList} />
+            <ItemRow key={log.id} log={log} onOpenDetail={onOpenDetail} onQuantityClick={onQuantityClick} onDelete={onDelete} onAddToGroceryList={onAddToGroceryList} onCopyTo={onCopyTo ? (l) => onCopyTo({ kind: "log", log: l }) : undefined} />
           ))}
           <button
             onClick={() => onAddItem(date, mealType)}

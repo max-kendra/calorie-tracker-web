@@ -7,7 +7,11 @@ import { useEffect, useRef } from "react";
 // keypress, discarding whatever the lower one was holding.
 const openDialogs: Array<object> = [];
 
-export function useEscapeToClose(onClose: () => void) {
+export function hasOpenDialog(): boolean {
+  return openDialogs.length > 0;
+}
+
+export function useEscapeToClose(onClose: () => void, enabled = true) {
   // Ref instead of an effect dependency: always calls the latest
   // onClose without re-registering (and thus reshuffling stack order)
   // every render.
@@ -15,6 +19,7 @@ export function useEscapeToClose(onClose: () => void) {
   onCloseRef.current = onClose;
 
   useEffect(() => {
+    if (!enabled) return;
     const entry = {};
     openDialogs.push(entry);
 
@@ -29,5 +34,5 @@ export function useEscapeToClose(onClose: () => void) {
       const index = openDialogs.indexOf(entry);
       if (index >= 0) openDialogs.splice(index, 1);
     };
-  }, []);
+  }, [enabled]);
 }

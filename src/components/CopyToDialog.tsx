@@ -5,7 +5,7 @@ import { addDays, fromIsoDate, startOfWeek, toIsoDate } from "@/lib/dates";
 import { MEAL_LABELS, MEAL_TYPES } from "@/lib/macros";
 import { MEAL_COLORS } from "@/lib/colors";
 import { useEscapeToClose } from "@/lib/useEscapeToClose";
-import { describePayload, type DragPayload } from "@/lib/dragState";
+import { describePayload, isSameSpot, type DragPayload } from "@/lib/dragState";
 import { DialogShell } from "./DialogShell";
 
 interface CopyToDialogProps {
@@ -15,30 +15,35 @@ interface CopyToDialogProps {
   initialMeal?: MealType;
   initialMove?: boolean;
   onClose: () => void;
+  onDone?: () => void;
 }
 
 const WEEKDAY_FORMATTER = new Intl.DateTimeFormat(undefined, { weekday: "narrow" });
 const MONTH_YEAR_FORMATTER = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 
-export function CopyToDialog({ payload, logIds, initialDate, initialMeal, initialMove = false, onClose }: CopyToDialogProps) {
+export function CopyToDialog({ payload, logIds, initialDate, initialMeal, initialMove = false, onClose, onDone }: CopyToDialogProps) {
   useEscapeToClose(onClose);
   const copyLogs = useCopyLogs();
 
-  const sourceDate = payload.kind === "log" ? payload.log.date : payload.date;
+  const sourceDate =
+    payload.kind === "log" ? payload.log.date : payload.kind === "logs" ? payload.logs[0].date : payload.date;
   const sourceMeal: MealType | null =
     payload.kind === "log" ? payload.log.meal_type : payload.kind === "meal" ? payload.mealType : null;
-  const keepsMeals = payload.kind === "day";
+  const isDay = payload.kind === "day";
+  const isSelection = payload.kind === "logs";
 
   const [date, setDate] = useState(initialDate ?? sourceDate);
   const [meal, setMeal] = useState<MealType>(initialMeal ?? sourceMeal ?? "breakfast");
   const [move, setMove] = useState(initialMove);
+  const [keepOwnMeals, setKeepOwnMeals] = useState(isSelection && initialMeal == null);
+  const keepsMeals = isDay || (isSelection && keepOwnMeals);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = fromIsoDate(initialDate ?? sourceDate);
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
   const { title, subtitle } = describePayload(payload, logIds.length);
-  const sameSpot = move && date === sourceDate && (keepsMeals || meal === sourceMeal);
+  const sameSpot = move && isSameSpot(payload, date, keepsMeals ? null : meal);
 
   const gridStart = startOfWeek(viewMonth);
   const days: Date[] = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
@@ -47,7 +52,12 @@ export function CopyToDialog({ payload, logIds, initialDate, initialMeal, initia
   function submit() {
     copyLogs.mutate(
       { log_ids: logIds, target_date: date, meal_type: keepsMeals ? undefined : meal, move },
-      { onSuccess: onClose },
+      {
+        onSuccess: () => {
+          onDone?.();
+          onClose();
+        },
+      },
     );
   }
 
@@ -139,22 +149,30 @@ export function CopyToDialog({ payload, logIds, initialDate, initialMeal, initia
           </div>
         </div>
 
-        {keepsMeals ? (
+        {isDay ? (
           <div className="text-sm text-gray-500 dark:text-gray-400">Each item keeps its own meal.</div>
         ) : (
-          <div className="grid grid-cols-4 gap-2">
-            {MEAL_TYPES.map((m) => (
-              <button
-                key={m}
-                onClick={() => setMeal(m)}
-                className={`py-2 rounded-lg text-sm font-medium text-gray-800 transition ${
-                  meal === m ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-800" : "opacity-70 hover:opacity-100"
-                }`}
-                style={{ backgroundColor: MEAL_COLORS[m] }}
-              >
-                {MEAL_LABELS[m]}
-              </button>
-            ))}
+          <div className="space-y-2">
+            <div className={`grid grid-cols-4 gap-2 transition ${keepsMeals ? "opacity-40 pointer-events-none" : ""}`}>
+              {MEAL_TYPES.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMeal(m)}
+                  className={`py-2 rounded-lg text-sm font-medium text-gray-800 transition ${
+                    meal === m ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-800" : "opacity-70 hover:opacity-100"
+                  }`}
+                  style={{ backgroundColor: MEAL_COLORS[m] }}
+                >
+                  {MEAL_LABELS[m]}
+                </button>
+              ))}
+            </div>
+            {isSelection && (
+              <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+                <input type="checkbox" checked={keepOwnMeals} onChange={(e) => setKeepOwnMeals(e.target.checked)} />
+                Keep each item's own meal
+              </label>
+            )}
           </div>
         )}
       </div>

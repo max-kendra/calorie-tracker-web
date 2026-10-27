@@ -1,8 +1,8 @@
 import { useContext } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import type { Log } from "@/api/types";
-import { CopyIcon } from "./icons";
-import { DragContext, isLogInDrag } from "@/lib/dragState";
+import { CheckIcon, CopyIcon } from "./icons";
+import { DragContext, SelectionContext, isLogInDrag } from "@/lib/dragState";
 import { logDisplayName, logQuantityLabel } from "@/lib/macros";
 import { MACRO_COLORS } from "@/lib/colors";
 
@@ -47,9 +47,13 @@ interface ItemRowProps {
 
 export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToGroceryList, draggable = false, onCopyTo }: ItemRowProps) {
   const { active, copy } = useContext(DragContext);
+  const selection = useContext(SelectionContext);
+  const isSelected = selection.selected.has(log.id);
+  // Grabbing a selected row drags the whole selection.
+  const dragsSelection = selection.selecting && isSelected && selection.selectedLogs.length > 1;
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: `log:${log.id}`,
-    data: { kind: "log", log },
+    data: dragsSelection ? { kind: "logs", logs: selection.selectedLogs } : { kind: "log", log },
     disabled: !draggable,
   });
   const faded = !copy && isLogInDrag(active, log);
@@ -68,15 +72,33 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
         {...(draggable ? attributes : {})}
         role="button"
         tabIndex={0}
-        onClick={() => onOpenDetail(log)}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpenDetail(log)}
-        className={`log-row cursor-pointer rounded px-1 -mx-1 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1.5 ${draggable ? "active:cursor-grabbing" : ""}`}
+        onClick={() => (selection.selecting ? selection.toggle(log.id) : onOpenDetail(log))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") selection.selecting ? selection.toggle(log.id) : onOpenDetail(log);
+        }}
+        className={`log-row cursor-pointer rounded px-1 -mx-1 flex items-center gap-1.5 ${
+          isSelected ? "bg-blue-50 dark:bg-blue-500/15" : "hover:bg-gray-50 dark:hover:bg-gray-700"
+        } ${draggable ? "active:cursor-grabbing" : ""}`}
       >
-        {log.image_path ? (
-          <img src={`/${log.image_path}`} alt="" className="log-thumb rounded object-cover shrink-0" />
-        ) : (
-          <div className="log-thumb rounded bg-gray-100 dark:bg-gray-700 shrink-0" />
-        )}
+        <div className="relative shrink-0">
+          {log.image_path ? (
+            <img src={`/${log.image_path}`} alt="" className="log-thumb rounded object-cover" />
+          ) : (
+            <div className="log-thumb rounded bg-gray-100 dark:bg-gray-700" />
+          )}
+          {selection.selecting && (
+            <span
+              aria-hidden="true"
+              className={`absolute -top-1 -left-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                isSelected
+                  ? "bg-blue-500 border-blue-500 text-white"
+                  : "bg-white/90 dark:bg-gray-800/90 border-gray-400 dark:border-gray-400"
+              }`}
+            >
+              {isSelected && <CheckIcon className="w-2.5 h-2.5" />}
+            </span>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm leading-tight text-gray-800 dark:text-gray-100 line-clamp-2 break-words">{logDisplayName(log)}</div>
           <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs text-gray-500 dark:text-gray-300">
@@ -103,7 +125,7 @@ export function ItemRow({ log, onOpenDetail, onQuantityClick, onDelete, onAddToG
           </div>
         </div>
       </div>
-      <div className="absolute right-0 top-1 flex gap-0.5 rounded bg-white/95 dark:bg-gray-800/95 shadow-sm opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition">
+      <div className={`absolute right-0 top-1 flex gap-0.5 rounded bg-white/95 dark:bg-gray-800/95 shadow-sm opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition ${selection.selecting ? "hidden" : ""}`}>
         {canAddToGroceryList && (
           <button
             onClick={(e) => {

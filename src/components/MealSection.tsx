@@ -1,8 +1,8 @@
 import { useContext } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { Log, MealType } from "@/api/types";
-import { CopyIcon } from "./icons";
-import { DragContext, isSameSpot } from "@/lib/dragState";
+import { CheckIcon, CopyIcon } from "./icons";
+import { DragContext, SelectionContext, isSameSpot } from "@/lib/dragState";
 import { MEAL_LABELS, sumTotals } from "@/lib/macros";
 import { MEAL_COLORS } from "@/lib/colors";
 import { ItemRow } from "./ItemRow";
@@ -40,6 +40,10 @@ export function MealSection({
   const totals = sumTotals(logs);
   const color = MEAL_COLORS[mealType];
   const { active, copy } = useContext(DragContext);
+  const selection = useContext(SelectionContext);
+  const mealIds = logs.map((l) => l.id);
+  const allSelected = mealIds.length > 0 && mealIds.every((id) => selection.selected.has(id));
+  const someSelected = !allSelected && mealIds.some((id) => selection.selected.has(id));
 
   const drag = useDraggable({
     id: `meal:${date}:${mealType}`,
@@ -61,6 +65,19 @@ export function MealSection({
         className="group/head flex items-center hover:brightness-95 transition"
         style={{ backgroundColor: color }}
       >
+        {selection.selecting && logs.length > 0 && (
+          <button
+            onClick={() => selection.setMany(mealIds, !allSelected)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            aria-label={allSelected ? "Deselect meal" : "Select meal"}
+            className={`ml-1.5 w-4 h-4 shrink-0 rounded-full border-2 flex items-center justify-center ${
+              allSelected || someSelected ? "bg-blue-500 border-blue-500 text-white" : "bg-white/70 border-gray-600"
+            }`}
+          >
+            {allSelected ? <CheckIcon className="w-2.5 h-2.5" /> : someSelected ? <span className="w-1.5 h-0.5 bg-white rounded" /> : null}
+          </button>
+        )}
         <button
           onClick={() => onMealClick(date, mealType)}
           className="flex-1 min-w-0 px-2 py-1.5 flex items-baseline justify-between text-left"
